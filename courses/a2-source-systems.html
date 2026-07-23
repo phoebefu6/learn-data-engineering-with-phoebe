@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 2 · Source systems - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Leader session 2 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Leader track · Session 2 of 6</div>
+    <h1><span class="accent">Source</span> systems</h1>
+    <p class="sub">Data has to be born somewhere before anyone can use it. That somewhere is a source system - Daybreak's app database, a payment API, a stream of clicks, a pile of log files. The hard part is not reading them. It is that your team almost never owns them: they change without warning, rate-limit you, and go down at the worst moment. This session is about the systems your data depends on but cannot control, and the questions a leader should be asking about them before they break.</p>
+    <div class="chip-row">
+      <span class="chip level">🔵 Leader track</span>
+      <span class="chip audience">Leaders: CxO · VPs · managers</span>
+      <span class="chip audience">No code - thinking mode</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-20 · Where data is born</span>
+      <span class="a3" style="flex:5">20-42 · The systems you don't own</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are in the track</h2>
+    </div>
+    <p class="lede">Last session gave you the map: the five-stage lifecycle and where data engineering ends and its siblings begin. This session zooms into the very first stage - <strong>generation</strong> - because it is where most pipeline pain is actually born. For Daybreak, the source is the operational database behind the app plus a handful of outside services. You will leave understanding why "just pull it from the source" is never as simple as it sounds, and knowing the three questions that separate a team that sleeps at night from one that gets paged when a system they do not own quietly changes.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A feel for the zoo of source systems your data comes from, a clear grasp of why you usually do not own them and what that costs, and the three questions - documented contracts, who-gets-paged, replica-not-prod - that a leader should ask before trusting any source-fed report.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE ZOO ============ -->
+  <section class="section" id="zoo">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI Source Systems M1</span>
+      <h2>Where data is born <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">Before data is anything useful, it is an event in some operating system - a subscription started, a card charged, a page clicked, an error logged. Those systems come in a handful of recognizable shapes, and each has a different cadence, structure, and reliability. A leader does not need to operate them, but recognizing the zoo tells you why one source is easy and another is a constant fire.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A hub of source system types feeding an ingestion funnel">
+        <style>
+          .ss1T { font: 700 12.5px Inter, sans-serif; fill: #FFFFFF; }
+          .ss1H { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .ss1C { font: 400 10.5px Inter, sans-serif; fill: #566A67; }
+          .ss1F { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .ss1N { font: 600 13px Inter, sans-serif; fill: #3A1C0C; }
+          .ss1Arr { stroke: #3AA39D; stroke-width: 2; fill: none; marker-end: url(#ss1Ah); }
+        </style>
+        <defs>
+          <marker id="ss1Ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#3AA39D"/>
+          </marker>
+        </defs>
+        <text class="ss1H" x="40" y="30">The source zoo</text>
+
+        <rect x="26" y="46" width="150" height="40" rx="8" fill="#0A4A46"/>
+        <text class="ss1T" x="40" y="63">App database</text>
+        <text class="ss1C" x="40" y="79">OLTP · the app</text>
+
+        <rect x="26" y="98" width="150" height="40" rx="8" fill="#0E6F6B"/>
+        <text class="ss1T" x="40" y="115">REST APIs</text>
+        <text class="ss1C" x="40" y="131">payments, SaaS</text>
+
+        <rect x="26" y="150" width="150" height="40" rx="8" fill="#3AA39D"/>
+        <text class="ss1T" x="40" y="167">Event streams</text>
+        <text class="ss1C" x="40" y="183">clicks, app events</text>
+
+        <rect x="26" y="202" width="150" height="40" rx="8" fill="#0E6F6B"/>
+        <text class="ss1T" x="40" y="219">Log files</text>
+        <text class="ss1C" x="40" y="235">servers, devices</text>
+
+        <rect x="26" y="254" width="150" height="40" rx="8" fill="#3AA39D"/>
+        <text class="ss1T" x="40" y="271">Files + SaaS</text>
+        <text class="ss1C" x="40" y="287">CSV, exports</text>
+
+        <path class="ss1Arr" d="M180,66 L376,150"/>
+        <path class="ss1Arr" d="M180,118 L376,158"/>
+        <path class="ss1Arr" d="M180,170 L376,170"/>
+        <path class="ss1Arr" d="M180,222 L376,182"/>
+        <path class="ss1Arr" d="M180,274 L376,190"/>
+
+        <path d="M400,120 L560,120 L500,190 L500,250 L460,250 L460,190 Z" fill="#0A4A46"/>
+        <text class="ss1F" x="480" y="158" text-anchor="middle">Ingestion</text>
+
+        <rect x="620" y="150" width="220" height="52" rx="8" fill="#C2683A"/>
+        <text class="ss1F" x="640" y="172">To the pipeline →</text>
+        <text class="ss1C" x="640" y="190" fill="#FBEDE4">sessions a3-a5</text>
+        <path class="ss1Arr" d="M562,176 L616,176"/>
+
+        <rect x="26" y="312" width="14" height="14" rx="3" fill="#C2683A"/>
+        <text class="ss1N" x="50" y="324">Different shapes, cadences, reliability - the funnel copes with all of them.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the sources feed a single ingestion funnel, each with its own quirks</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The shapes, and why they differ<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Each source shape behaves differently, and the difference is what makes ingestion hard:</p>
+        <ul>
+          <li><strong>App databases (OLTP).</strong> The transactional store behind the product - Daybreak's orders, customers, subscriptions. Tuned for fast writes, not for the heavy reads analytics wants. This is the primary source and the star of session a3's tension.</li>
+          <li><strong>REST APIs.</strong> How you reach systems you truly cannot see inside - a payment processor, an email tool. You get what they choose to expose, at the rate they allow, in the format they decide.</li>
+          <li><strong>Event and click streams.</strong> A firehose of small events as they happen. High volume, no natural stopping point - the source that pushes teams toward the streaming question in a3.</li>
+          <li><strong>Logs and files.</strong> The unglamorous majority. Server logs, nightly CSV exports, a spreadsheet a partner emails. Messy, but often the fastest data to get.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>ACID is why the app trusts its database.</strong> Daybreak's operational database guarantees that a subscription charge and the order it creates either both happen or neither does (the "A" and "C" in ACID). That guarantee is precious for running the business - and it is exactly why you should not run heavy analytics queries against it, because those queries fight the writes the business depends on. A leader does not need the acronym. They need to know: the system that runs the business is not the system you report from.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Cadence, structure, reliability<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Three dimensions tell you how hard a source will be to live with. <strong>Cadence</strong>: does it arrive in tidy nightly batches or as a never-ending stream? <strong>Structure</strong>: neat rows and columns, or free-form JSON and text that changes shape? <strong>Reliability</strong>: is it a managed service with an uptime guarantee, or a script on someone's laptop? A source that is streaming, semi-structured, and owned by an outside vendor is three kinds of hard at once. One that is batch, tabular, and internal is the easy case. Knowing which you are dealing with sets realistic expectations - and realistic timelines.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: YOU DON'T OWN IT ============ -->
+  <section class="section" id="dont-own">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers DLAI Source Systems M1, Fundamentals of Data Engineering</span>
+      <h2>The systems you don't own <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Here is the hard truth that surprises every leader new to this: your data team almost never owns the source. It belongs to the product team, or a vendor, or an ops group with entirely different priorities. They will change a column name, deprecate an API, or throttle your requests - and they have no obligation to tell your data team first. Everything downstream depends on systems your data team cannot control. That is not a bug in how you are organized. It is the permanent condition of the work.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Schema drift, rate limits, downtime<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Three ways an un-owned source turns on you:</p>
+        <ul>
+          <li><strong>Schema drift.</strong> The product team renames <code>signup_date</code> to <code>created_at</code> in a routine release. Their app keeps working. Every downstream report that expected the old name silently breaks or, worse, quietly returns nothing where it used to return data.</li>
+          <li><strong>Rate limits.</strong> A vendor API allows so many calls per minute. Your pipeline hits the ceiling during a busy period and starts dropping data - not because anything is broken, but because you do not control the tap.</li>
+          <li><strong>Downtime.</strong> The source goes down for maintenance on its own schedule. Your pipeline was mid-pull. Now you have half a day's data and a decision to make about the other half.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The rename that broke every report.</strong> A product team shipped a normal release that renamed one column in the orders table. No announcement to the data team - why would there be, the app was fine. Overnight, the ingestion job kept running without error but pulled an empty column. Every revenue dashboard showed a plausible-looking but wrong number for two days before anyone noticed. The cost was not the fix, which took an hour. It was the two days of decisions made on bad numbers, and the trust that took months to rebuild. The lesson: a source you do not own can break you without anyone doing anything wrong.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why "just query the prod database" hurts both sides<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The tempting shortcut is to point the analytics tools straight at the production app database. It seems free - the data is right there. It is not free. Heavy analytics queries compete with the reads and writes the live app needs, so a big report can slow down or even stall the product for real customers. And the app database is shaped for transactions, not analysis, so the queries are painful to write and slow to run. This is the operational-versus-analytical split that the sibling <strong>learn-data-warehouse</strong> course is built around: the system that runs the business (OLTP) and the system you analyze in (OLAP) should be two different places, and the pipeline you fund is what safely moves data from one to the other.</p>
+        <div class="callout tip">
+          <strong>The contract conversation</strong>
+          Because you do not own the source, the relationship with the team that does is a real deliverable - not a favor. A lightweight data contract says: here are the fields we depend on, here is the shape we expect, and here is how you will tell us before it changes. It is cheaper to have that conversation once than to discover a breaking change in production every quarter.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: WHAT LEADERS ASK ============ -->
+  <section class="section" id="ask">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers DLAI Source Systems M1, Fundamentals of Data Engineering</span>
+      <h2>What a leader should ask <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">You will not write the ingestion code, and you should not try. But three questions, asked in a planning meeting, will tell you more about how exposed your data operation is than any architecture diagram. If the answers are vague, you have found your next investment before it finds you as an outage.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A source-contract checklist strip with three leader questions">
+        <style>
+          .sc3H { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .sc3T { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .sc3Q { font: 600 12px Inter, sans-serif; fill: #14211F; }
+          .sc3N { font: 600 13px Inter, sans-serif; fill: #3A1C0C; }
+          .sc3M { font: 700 20px Inter, sans-serif; fill: #FFFFFF; }
+        </style>
+        <text class="sc3H" x="40" y="34">Three questions to ask before you trust a source-fed report</text>
+
+        <rect x="26" y="54" width="260" height="120" rx="10" fill="#0E6F6B"/>
+        <circle cx="56" cy="86" r="16" fill="#0A4A46"/>
+        <text class="sc3M" x="56" y="93" text-anchor="middle">1</text>
+        <text class="sc3T" x="82" y="82">Documented</text>
+        <text class="sc3T" x="82" y="99">contracts?</text>
+        <text class="sc3Q" x="42" y="132" fill="#FFFFFF">Do we know which fields</text>
+        <text class="sc3Q" x="42" y="150" fill="#FFFFFF">we depend on, agreed</text>
+        <text class="sc3Q" x="42" y="168" fill="#FFFFFF">with the source owner?</text>
+
+        <rect x="310" y="54" width="260" height="120" rx="10" fill="#3AA39D"/>
+        <circle cx="340" cy="86" r="16" fill="#0A4A46"/>
+        <text class="sc3M" x="340" y="93" text-anchor="middle">2</text>
+        <text class="sc3T" x="366" y="82">Who gets</text>
+        <text class="sc3T" x="366" y="99">paged?</text>
+        <text class="sc3Q" x="326" y="132" fill="#FFFFFF">When a source changes</text>
+        <text class="sc3Q" x="326" y="150" fill="#FFFFFF">or drops, does someone</text>
+        <text class="sc3Q" x="326" y="168" fill="#FFFFFF">find out fast?</text>
+
+        <rect x="594" y="54" width="260" height="120" rx="10" fill="#C2683A"/>
+        <circle cx="624" cy="86" r="16" fill="#3A1C0C"/>
+        <text class="sc3M" x="624" y="93" text-anchor="middle">3</text>
+        <text class="sc3T" x="650" y="82">Replica,</text>
+        <text class="sc3T" x="650" y="99">not prod?</text>
+        <text class="sc3Q" x="610" y="132" fill="#FFFFFF">Are we reading a copy,</text>
+        <text class="sc3Q" x="610" y="150" fill="#FFFFFF">not the live database</text>
+        <text class="sc3Q" x="610" y="168" fill="#FFFFFF">the app runs on?</text>
+
+        <rect x="26" y="206" width="14" height="14" rx="3" fill="#C2683A"/>
+        <text class="sc3N" x="50" y="218">Three vague answers = three risks you are carrying without knowing it.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the three questions that reveal how exposed your data operation is</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The three questions, unpacked<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Do we have documented contracts with source owners?</strong> Not a formal legal document - a shared, written understanding of which fields matter and how change is communicated. If the answer is "we just know," you are one release away from a silent outage.</li>
+          <li><strong>Who gets paged when a source changes?</strong> If nobody, then you find out about breakage the way the retail team did - two days later, at quarter-end, from an angry stakeholder. (The paging itself lives in the <strong>learn-dataops</strong> course; the question of whether it exists is a leadership question.)</li>
+          <li><strong>Are we reading replicas, not prod?</strong> A read replica is a safe copy that analytics can hammer without slowing the live app. If your team is querying the production database directly, you are risking the customer experience every time a report runs.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>Where the answers point</strong>
+          Vague answers are not a failing of your team - they are an un-funded seam. Each one maps to a concrete next step: write the contract, set up the alert (dataops), stand up the replica. You do not need to know how. You need to know to ask, and to fund the fix.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Take it back to your team - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>List the top five source systems your reporting depends on. For each, note its shape (database, API, stream, file) and whether your team owns it or someone else does.</li>
+      <li>Ask the three leader questions about your single most important source - documented contract, who gets paged, replica not prod. Write down where the answer is a shrug.</li>
+      <li>Find out, honestly, whether any analytics query in your org points straight at a production app database. If yes, that is a risk to name out loud, not to hide.</li>
+      <li>Identify one source owned by an outside vendor and ask what happens to your reports if that vendor changes their API next month. Notice whether anyone has thought about it.</li>
+      <li>Recall the last time a report "suddenly broke." Trace it back - was it really a source change nobody was warned about? Bring the story to session a3.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the leadership-level thinking from the DeepLearning.AI Data Engineering Professional Certificate (Joe Reis) and Reis &amp; Housley's <em>Fundamentals of Data Engineering</em>, kept out of the console and focused on the decisions a leader owns. Certificates, AWS labs, and code stay on the official platforms. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Source Systems, Data Ingestion &amp; Pipelines - M1: Working with source systems</span><span class="note">Parts 1-3 · source types, ACID, ownership, connecting to sources - in exec language</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Fundamentals of Data Engineering (Reis &amp; Housley) - source systems chapter</span><span class="note">Parts 2-3 · the un-owned-source condition and the contract conversation</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · What is the defining reality of source systems for a data team?</p>
+      <button class="qopt" type="button">A · They are always well documented</button>
+      <button class="qopt" type="button">B · The data team builds and owns them</button>
+      <button class="qopt" type="button">C · The data team usually does not own them and cannot control when they change</button>
+      <p class="qwhy">Source systems belong to product teams, vendors, or ops groups with their own priorities. They change, rate-limit, and go down on their own schedule - and that permanent condition is the root of most pipeline pain.</p>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">2 · Why is pointing analytics queries straight at the production app database a bad idea?</p>
+      <button class="qopt" type="button">A · It is always technically impossible</button>
+      <button class="qopt" type="button">B · Heavy queries compete with the live app and the database is shaped for transactions, not analysis</button>
+      <button class="qopt" type="button">C · Production databases cannot store useful data</button>
+      <p class="qwhy">The app database (OLTP) is tuned for fast transactions the product depends on. Heavy analytics queries fight those, risking the customer experience - which is why the pipeline moves data to a separate analytical home (the learn-data-warehouse topic).</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · A report that ran fine for a year suddenly returns wrong numbers, with no error. Most likely cause?</p>
+      <button class="qopt" type="button">A · Schema drift - an un-owned source changed a field without warning the data team</button>
+      <button class="qopt" type="button">B · The dashboard software expired</button>
+      <button class="qopt" type="button">C · Too many people opened the report at once</button>
+      <p class="qwhy">A silent wrong-number failure is the classic signature of schema drift: the source owner shipped a routine change (a renamed column), the app kept working, and the pipeline kept running while quietly pulling the wrong thing.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 2 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>The source zoo</b><span>App databases, REST APIs, event streams, logs, files/SaaS - each a different shape and cadence.</span></div>
+      <div class="cheat-item"><b>Generation stage</b><span>Data is born in source systems - the first lifecycle stage and where most pain starts.</span></div>
+      <div class="cheat-item"><b>You don't own it</b><span>Sources belong to product, vendors, ops. They change, throttle, and go down without telling you.</span></div>
+      <div class="cheat-item"><b>Schema drift</b><span>A renamed field breaks reports silently - no error, just wrong numbers. The classic outage.</span></div>
+      <div class="cheat-item"><b>Not the prod database</b><span>Heavy queries on the live app database hurt customers. Read a replica, not prod.</span></div>
+      <div class="cheat-item"><b>OLTP vs OLAP</b><span>The system that runs the business ≠ the system you report from. Warehouse course owns the depth.</span></div>
+      <div class="cheat-item"><b>Data contracts</b><span>A written deal on fields + change notice with the source owner. A deliverable, not a favor.</span></div>
+      <div class="cheat-item"><b>Three leader questions</b><span>Documented contracts? Who gets paged? Reading a replica, not prod? Vague answers = risk.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 2 of 6 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="a1-what-data-engineering-is.html">← Prev: What data engineering is</a> &nbsp;·&nbsp; <a href="a3-batch-vs-streaming.html">Next: Batch vs streaming →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

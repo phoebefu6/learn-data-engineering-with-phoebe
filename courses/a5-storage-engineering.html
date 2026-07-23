@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 5 · Storage engineering - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Leader session 5 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Leader track · Session 5 of 6</div>
+    <h1><span class="accent">Storage</span> engineering</h1>
+    <p class="sub">Storage feels like a detail engineers handle - until the cloud bill arrives and half of it is data nobody has read in years. How you store data (the file format) and where you store it (the tier) are cost and speed decisions, not technicalities. This session gives leaders the two levers that quietly control most of a data platform's storage bill, and the monthly conversation that keeps it honest.</p>
+    <div class="chip-row">
+      <span class="chip level">🔵 Leader track</span>
+      <span class="chip audience">Leaders: CxO · VPs · managers</span>
+      <span class="chip audience">No code - thinking mode</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:5">3-20 · Formats + why they matter</span>
+      <span class="a3" style="flex:7">20-42 · Tiers, object storage, cost</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Why storage is a leadership topic</h2>
+    </div>
+    <p class="lede">Two choices your team makes early - what format data is stored in, and which storage tier it sits on - compound every single month for years. Get them right and storage is a rounding error. Get them wrong and you pay premium prices to keep five-year-old logs nobody reads, and every query costs more than it should. You do not need to know the byte layout of a file. You need to know that these two levers exist, roughly how big they are, and what to ask about them. That is this session.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      An exec-level grasp of row vs columnar formats (and why Parquet is the analytics default), the hot / warm / cold storage tiers and their cost-vs-speed tradeoff, why object storage like S3 is the cheap durable base of every modern stack, and the monthly storage conversation to run with your team.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: FILE FORMATS ============ -->
+  <section class="section" id="formats">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI Data Storage &amp; Queries M1</span>
+      <h2>File formats: row vs columnar <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">The same data can be stored in very different files, and the choice changes both the storage bill and the speed of every query. Row formats like CSV and JSON are human-friendly and universal, but fat and slow to analyze. Columnar formats like Parquet compress hard and let a query read only the columns it needs. For analytics, that difference is not a detail - it is a recurring line on the invoice.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same data as a large uncompressed CSV file versus a small compressed Parquet file">
+        <style>
+          .fmtH { font: 700 13px Inter, sans-serif; fill: #14211F; }
+          .fmtT { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .fmtS { font: 400 11.5px Inter, sans-serif; fill: #A6D9D4; }
+          .fmtSb { font: 400 11.5px Inter, sans-serif; fill: #FBEDE4; }
+          .fmtBig { font: 800 20px Inter, sans-serif; fill: #FFFFFF; }
+          .fmtN { font: 600 12px Inter, sans-serif; fill: #566A67; }
+        </style>
+        <text class="fmtH" x="40" y="28">Same 10 million rows, two formats</text>
+
+        <rect x="40" y="46" width="360" height="150" rx="10" fill="#0A4A46"/>
+        <text class="fmtT" x="62" y="76">CSV / JSON (row format)</text>
+        <text class="fmtS" x="62" y="98">human-readable, universal</text>
+        <text class="fmtBig" x="62" y="140">~4.0 GB</text>
+        <text class="fmtS" x="62" y="164">query must scan the whole file</text>
+        <text class="fmtS" x="62" y="184">every time, all columns</text>
+
+        <rect x="480" y="46" width="360" height="150" rx="10" fill="#0E6F6B"/>
+        <text class="fmtT" x="502" y="76">Parquet (columnar)</text>
+        <text class="fmtSb" x="502" y="98">compressed, analytics-native</text>
+        <text class="fmtBig" x="502" y="140">~0.5 GB</text>
+        <text class="fmtSb" x="502" y="164">query reads only the columns</text>
+        <text class="fmtSb" x="502" y="184">it needs - far less scanned</text>
+
+        <text class="fmtN" x="40" y="238">Roughly 8x smaller on disk, and a column-selective query scans a fraction of the bytes.</text>
+        <text class="fmtN" x="40" y="262">On usage-priced warehouses you pay per byte scanned - so format choice hits every query bill.</text>
+        <text class="fmtN" x="40" y="286">(Illustrative figures - real ratios depend on the data; the direction is what matters.)</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - bloated CSV vs compact Parquet: size and scan cost, side by side</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why columnar wins for analytics<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Analytics questions almost always touch a few columns across many rows - "total revenue by month," not "give me everything about order 4471." Columnar storage is built for exactly that shape.</p>
+        <ul>
+          <li><strong>Compression:</strong> a column holds similar values (all dates, all amounts), which compresses far better than mixed rows. Smaller files mean a smaller storage bill.</li>
+          <li><strong>Column pruning:</strong> a query that needs 3 of 40 columns reads only those 3. On a warehouse priced per byte scanned, that is money saved on every single query.</li>
+          <li><strong>Parquet is the default:</strong> it has become the standard analytics format across the modern stack for these reasons - most tools read and write it natively.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>When row formats still make sense<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Columnar is not always right. CSV and JSON win when a human needs to read the file, when you are handing data to a partner who expects a universal format, or when you are writing one record at a time rather than analyzing millions. Row formats are also fine as the <em>landing</em> format straight out of a source - you convert to Parquet once, at the storage step, before analytics. The rule of thumb: raw and human-facing can be row-based; anything queried repeatedly for analytics should be columnar. Your team makes this call at the storage stage of the pipeline.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The dashboard that got 10x cheaper overnight.</strong> A company backed its main dashboards with raw JSON files in object storage. Every refresh scanned gigabytes. One engineer converted the analytics tables to Parquet - same data, same queries - and the monthly scan bill dropped by roughly an order of magnitude. No new tool, no new headcount. Just the right format for the job.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Table formats, in one breath<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>You may hear engineers say "Iceberg" or "Delta" or "Hudi." These are <strong>table formats</strong> - a thin layer on top of Parquet files that adds database-like features: transactions, safe concurrent writes, and time-travel to older versions. You do not need the internals. The leader-level takeaway: they let a cheap pile of files in object storage behave more like a real database, which is the idea behind the "lakehouse." When your team proposes one, the right question is "what does it let us do that plain Parquet does not, and is that worth the added complexity right now?"</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: TIERS + OBJECT STORAGE ============ -->
+  <section class="section" id="tiers">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers DLAI Data Storage &amp; Queries M1</span>
+      <h2>Tiers, object storage, and cost <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">The second lever is <em>where</em> data lives. Cloud storage comes in tiers that trade price for retrieval speed: hot storage is instant but expensive, cold storage is cheap but slow to pull back. Underneath it all, object storage like Amazon S3 is the cheap, durable base layer that holds the raw data for the entire modern stack. Matching data to the right tier is one of the biggest, easiest storage savings there is.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A storage tier ladder from hot to cold, cost dropping as retrieval time rises">
+        <style>
+          .tierH { font: 700 13px Inter, sans-serif; fill: #14211F; }
+          .tierT { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .tierS { font: 400 11.5px Inter, sans-serif; fill: #A6D9D4; }
+          .tierAx { font: 600 11.5px Inter, sans-serif; fill: #566A67; }
+          .tierN { font: 600 12px Inter, sans-serif; fill: #3A1C0C; }
+          .tierArr { stroke: #C2683A; stroke-width: 2.5; fill: none; marker-end: url(#tierAh); }
+        </style>
+        <defs>
+          <marker id="tierAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#C2683A"/>
+          </marker>
+        </defs>
+        <text class="tierH" x="40" y="28">Three tiers - pick per how often data is read</text>
+
+        <rect x="60" y="46" width="620" height="58" rx="8" fill="#0A4A46"/>
+        <text class="tierT" x="82" y="72">Hot</text>
+        <text class="tierS" x="82" y="92">read constantly · instant · most expensive per GB</text>
+
+        <rect x="120" y="118" width="560" height="58" rx="8" fill="#0E6F6B"/>
+        <text class="tierT" x="142" y="144">Warm</text>
+        <text class="tierS" x="142" y="164">read occasionally · slight delay · mid price</text>
+
+        <rect x="180" y="190" width="500" height="58" rx="8" fill="#3AA39D"/>
+        <text class="tierT" x="202" y="216">Cold / archive</text>
+        <text class="tierS" x="202" y="236">rarely read · minutes-to-hours to retrieve · cheapest</text>
+
+        <path class="tierArr" d="M710,60 L710,236"/>
+        <text class="tierAx" x="724" y="80">cost per</text>
+        <text class="tierAx" x="724" y="96">GB drops</text>
+        <text class="tierAx" x="724" y="210">retrieval</text>
+        <text class="tierAx" x="724" y="226">time rises</text>
+
+        <rect x="40" y="278" width="14" height="14" rx="3" fill="#C2683A"/>
+        <text class="tierN" x="64" y="290">Object storage (S3) is the durable base under every tier - the cheap floor of the whole stack.</text>
+        <text class="tierN" x="40" y="312">The waste to hunt: old data sitting on the hot tier at premium price, read by no one.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the tier ladder: cost falls, retrieval time rises, as data cools</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Object storage: the cheap durable floor<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Object storage - Amazon S3 and its equivalents - is where the modern stack keeps its raw data. It is cheap, effectively infinite, and extraordinarily durable, and it separates storage from compute so you pay for each independently.</p>
+        <ul>
+          <li><strong>Cheap and durable:</strong> designed to almost never lose data, at a fraction of the cost of database storage. This is why "land everything in S3 first" is a common pattern.</li>
+          <li><strong>Storage separate from compute:</strong> you store data once and point different engines at it, rather than paying a database to hold data it is not currently querying.</li>
+          <li><strong>The base of the lakehouse:</strong> Parquet files on object storage, with a table format on top, is the storage foundation most modern platforms are built on.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Lake vs warehouse, at storage altitude<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Two words you will hear a lot. A <strong>data lake</strong> is raw files (often Parquet) sitting cheaply in object storage - flexible, low-cost, less structured. A <strong>data warehouse</strong> is a managed system optimized for fast, governed queries on modeled data - more structure, higher cost, more speed. From a storage-cost angle, the lake is where you keep the bulk cheaply and the warehouse is where you put the curated data people query all day. How the warehouse models that curated data - star schemas, dimensions, marts - is the depth owned by the <a href="https://phoebefu6.github.io/learn-data-warehouse-with-phoebe/">learn-data-warehouse</a> course. Here we only care about the storage split and its cost.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: WHAT LEADERS WATCH ============ -->
+  <section class="section" id="watch">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · the monthly conversation</span>
+      <h2>What leaders should watch <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">You will not tune storage yourself. But three questions, asked monthly, catch nearly all the expensive drift before it compounds. They are simple, they are non-technical, and your team will respect that you ask them.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The three questions to ask monthly<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>None of these need a technical answer from you - they need an honest one from your team.</p>
+        <ul>
+          <li><strong>Are we storing raw data forever at full price?</strong> Raw data is worth keeping, but not on the hot tier once it is old. If nobody has a retention-and-tiering answer, that is the finding.</li>
+          <li><strong>Do we tier cold data down automatically?</strong> Cloud providers can move data to cheaper tiers on a rule (for example, after 90 days). If it is all still hot, you are overpaying by default.</li>
+          <li><strong>Is our format choice costing us on every query?</strong> If analytics runs on CSV or JSON instead of Parquet, every query scans more bytes than it needs - and on usage-priced warehouses, that is real money, repeatedly.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Storage cost is a habit, not a project<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The trap with storage is that it is never urgent. No dashboard breaks because logs sat on the hot tier for three years - the bill just quietly grows. That is exactly why it needs a standing rhythm rather than a one-off cleanup. Put storage on a monthly or quarterly review, look at what is growing fastest and whether it is on the right tier and format, and set lifecycle rules so cooling happens automatically instead of waiting for a human to remember. Treat it as a habit and it stays a rounding error. Treat it as a project you do once and it silently becomes one of your largest line items.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Hot-tier prices for five-year-old logs.</strong> A company discovered it was paying premium hot-storage rates for application logs going back five years - terabytes that were legally required to keep but that no one ever queried. Moving them to a cold archive tier cut that portion of the bill by roughly 80% with zero downside, because "rarely read" was exactly what the cold tier is for. The data had never needed to be hot; nobody had ever asked.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Take this back to your team <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Ask your team for the last cloud storage bill and find the single fastest-growing bucket or table. Is it on the right tier?</li>
+      <li>Find out whether your analytics data is stored as Parquet or as CSV / JSON. If the latter, ask what a conversion would save.</li>
+      <li>Check whether any lifecycle / auto-tiering rules exist. If not, that is a one-afternoon win waiting to happen.</li>
+      <li>Identify the oldest data you are keeping on the hot tier and ask why it is not cold. Note the answer.</li>
+      <li>Write down the three monthly questions and add them to your next data-team review agenda. Bring the results to session a6.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the storage core of the DeepLearning.AI Data Engineering certificate's Data Storage and Queries course (Joe Reis) and Reis &amp; Housley's <em>Fundamentals of Data Engineering</em>, framed for leaders who own the budget. Verified as of mid-2026 - re-verify vendor storage tiers and pricing before acting. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Data Storage &amp; Queries - M1: storage ingredients, tiers, row vs column</span><span class="note">Parts 1-2 · formats, hot/warm/cold tiers, object storage, cost</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DLAI Data Storage &amp; Queries - M2: storage abstractions (lake / warehouse / lakehouse)</span><span class="note">Part 2 · the lake vs warehouse split, light - warehouse course owns the depth</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Fundamentals of Data Engineering (Reis &amp; Housley) - storage chapters</span><span class="note">Parts 1-3 · storage as a cost-and-speed decision across the lifecycle</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · Why is Parquet the default format for analytics data?</p>
+      <button class="qopt" type="button">A · It is the easiest format for humans to read directly</button>
+      <button class="qopt" type="button">B · It is columnar - it compresses hard and lets a query read only the columns it needs</button>
+      <button class="qopt" type="button">C · It is the only format cloud warehouses accept</button>
+      <p class="qwhy">Columnar storage compresses similar values well and prunes to just the needed columns, so files are smaller and queries scan fewer bytes. On usage-priced warehouses that saves money on every query.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · What is the tradeoff between hot and cold storage tiers?</p>
+      <button class="qopt" type="button">A · Cold is always better because it is cheaper</button>
+      <button class="qopt" type="button">B · Hot and cold cost the same; only durability differs</button>
+      <button class="qopt" type="button">C · Hot is instant but expensive; cold is cheap but slow to retrieve - match the tier to how often data is read</button>
+      <p class="qwhy">Tiers trade price for retrieval speed. Frequently read data belongs hot; rarely read data belongs cold. The classic waste is old data left on the hot tier at premium price.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · What role does object storage like Amazon S3 play in the modern stack?</p>
+      <button class="qopt" type="button">A · The cheap, durable base layer that holds the raw data for the whole stack</button>
+      <button class="qopt" type="button">B · A fast in-memory cache for live dashboards</button>
+      <button class="qopt" type="button">C · The tool that models data into star schemas</button>
+      <p class="qwhy">Object storage is cheap, effectively infinite, and highly durable, and it separates storage from compute. That is why "land everything in S3 first" is the foundation of the lake and lakehouse patterns.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 5 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Two levers</b><span>Format (how you store) and tier (where you store). Both compound on the bill monthly.</span></div>
+      <div class="cheat-item"><b>Row vs columnar</b><span>CSV / JSON = human-friendly, fat. Parquet = columnar, compressed, analytics-fast.</span></div>
+      <div class="cheat-item"><b>Parquet default</b><span>Smaller files + reads only needed columns = cheaper storage and cheaper queries.</span></div>
+      <div class="cheat-item"><b>Table formats</b><span>Iceberg / Delta / Hudi add transactions on Parquet files. The lakehouse idea.</span></div>
+      <div class="cheat-item"><b>Storage tiers</b><span>Hot (instant, dear) → warm → cold (cheap, slow). Match tier to read frequency.</span></div>
+      <div class="cheat-item"><b>Object storage</b><span>S3 = cheap, durable, infinite base of the stack. Storage separate from compute.</span></div>
+      <div class="cheat-item"><b>The classic waste</b><span>Old data on the hot tier at premium price, read by no one. Auto-tier it down.</span></div>
+      <div class="cheat-item"><b>Monthly conversation</b><span>Storing raw forever at full price? Tiering cold data? Format costing us per query?</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 5 of 6 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="a4-build-vs-buy.html">← Prev: Build vs buy the stack</a> &nbsp;·&nbsp; <a href="a6-de-org-roadmap.html">Next: The DE org and roadmap →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 4 · File and table formats - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Builder session 4 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Builder track · Session 4 of 10</div>
+    <h1>File and table <span class="accent">formats</span></h1>
+    <p class="sub">The format you land data in is a cost and speed decision, not a detail. This session contrasts row formats (CSV, JSON - readable but fat and untyped) with columnar Parquet (compressed, typed, analytics-fast), runs live format round trips, and explains what table formats like Iceberg and Delta add on top. All of it hands-on against Daybreak.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Builder track</span>
+      <span class="chip audience">Practitioners: DE · analysts · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-20 · Row vs columnar &amp; table formats</span>
+      <span class="a3" style="flex:5">20-42 · Build-along: format round trips</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are in the pipeline</h2>
+    </div>
+    <p class="lede">In b2 and b3 you landed Daybreak's data - as CSV, JSON, and Parquet, without dwelling on why. Now we make that choice on purpose. This is the <strong>storage</strong> stage of the lifecycle: once data has landed, the format it sits in decides how much it costs to keep and how fast every downstream query runs. Pick well here and the transform stage (b5) flies; pick badly and everything after pays.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live pipeline - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A gut sense of when to reach for CSV, JSON, or Parquet, hands-on proof that Parquet keeps types while CSV loses them, why reading two columns from Parquet is nearly free, and a clear map of what table formats (Iceberg, Delta, Hudi) add on top of plain Parquet files - the seam into the warehouse course.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: ROW VS COLUMNAR ============ -->
+  <section class="section" id="rowcol">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI Storage &amp; Queries M1</span>
+      <h2>Row formats vs columnar <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Formats split into two families. <strong>Row formats</strong> (CSV, JSON) store one record at a time, as human-readable text - easy to eyeball, but uncompressed, untyped, and fat. <strong>Columnar formats</strong> (Parquet) store one column at a time, as compressed typed binary - unreadable by eye, but small and blisteringly fast for the column-slicing that analytics does all day.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CSV and JSON versus Parquet compared on readability, size, and scan speed">
+        <style>
+          .fmH { font: 700 13px Inter, sans-serif; fill: #14211F; }
+          .fmL { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+          .fmK { font: 700 11.5px Inter, sans-serif; fill: #566A67; }
+          .fmC { font: 400 11px Inter, sans-serif; fill: #566A67; }
+          .fmW { font: 600 11px Inter, sans-serif; fill: #3A1C0C; }
+        </style>
+        <text class="fmK" x="230" y="42">Readability</text>
+        <text class="fmK" x="430" y="42">File size</text>
+        <text class="fmK" x="610" y="42">Scan speed</text>
+
+        <rect x="26" y="58" width="170" height="52" rx="8" fill="#0E6F6B"/>
+        <text class="fmL" x="42" y="80">CSV</text>
+        <text class="fmL" x="42" y="98">row · text</text>
+        <text class="fmC" x="230" y="90">high - eyeball it</text>
+        <text class="fmC" x="430" y="90">large, no compress</text>
+        <text class="fmC" x="610" y="90">slow, reads all</text>
+
+        <rect x="26" y="126" width="170" height="52" rx="8" fill="#0E6F6B"/>
+        <text class="fmL" x="42" y="148">JSON</text>
+        <text class="fmL" x="42" y="166">row · nested</text>
+        <text class="fmC" x="230" y="158">high - but verbose</text>
+        <text class="fmC" x="430" y="158">largest, repeats keys</text>
+        <text class="fmC" x="610" y="158">slow, parse-heavy</text>
+
+        <rect x="26" y="194" width="170" height="52" rx="8" fill="#C2683A"/>
+        <text class="fmL" x="42" y="216">Parquet</text>
+        <text class="fmL" x="42" y="234">columnar · binary</text>
+        <text class="fmW" x="230" y="226">low - binary</text>
+        <text class="fmW" x="430" y="226">small, compressed</text>
+        <text class="fmW" x="610" y="226">fast, reads needed cols</text>
+
+        <rect x="26" y="268" width="828" height="34" rx="6" fill="#E8F4F3" stroke="#A6D9D4"/>
+        <text class="fmH" x="44" y="290">Format is a cost + speed decision: readable for humans, or small + fast for machines.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - CSV and JSON win on readability, Parquet wins on size and analytics speed</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why columnar is fast for analytics<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The whole difference is layout on disk. Analytics rarely wants whole rows - it wants "sum this one column across a billion records". Layout decides how much work that takes:</p>
+        <ul>
+          <li><strong>Row format (CSV/JSON):</strong> values are interleaved record by record. To sum one column, the engine must read every byte of every row and skip the rest. All that I/O, mostly wasted.</li>
+          <li><strong>Columnar (Parquet):</strong> each column is stored together. To sum one column, the engine reads only that column's block and ignores the rest entirely. Less I/O, and similar values sit together so they compress hard.</li>
+          <li><strong>Types are baked in:</strong> Parquet records that a column is a DATE or an INTEGER. CSV is all text, so every read re-parses and re-guesses types - slow and error-prone.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Why the lake is full of Parquet.</strong> When a dashboard query touches 3 columns of a 200-column table, columnar storage reads roughly 3/200ths of the bytes; row storage reads all of it. On big tables that is the difference between a query that returns in a second and one that grinds for minutes - which is why analytical lakes standardised on Parquet.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>When readable formats still win<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Parquet is not always right. CSV and JSON keep earning their place at the edges of a pipeline. CSV is the universal interchange format - every tool, every partner, every spreadsheet reads it, so it is often what data <em>arrives</em> as and what a non-technical stakeholder wants <em>exported</em>. JSON is the right shape for nested, semi-structured, still-changing data from APIs. The rule: readable formats for the human-facing and fluid edges, Parquet for the machine-facing analytical core.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: ROUND TRIPS ============ -->
+  <section class="section" id="roundtrips">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · hands-on round trips</span>
+      <h2>Format round trips <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">The fastest way to feel the difference is to write the same data three ways and read it back. Notice what survives the trip: Parquet remembers that <code>order_date</code> is a DATE, while CSV hands it back as plain text you have to re-parse. That lost type is the hidden tax of row formats.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>One table, three formats<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Write <code>orders</code> to CSV, JSON, and Parquet, then read one column back from each and check its stored type. Press <strong>▶ Run</strong> (first run caches the ~8 MB engine).</p>
+        <div class="sqlbox" data-caption="Same data, three formats. typeof shows Parquet keeps the DATE type; CSV/JSON hand back a re-parsed value.">
+          <pre class="sql-src">-- land the same data three ways
+COPY (SELECT * FROM orders) TO 'f/orders.csv'     (FORMAT CSV, HEADER);
+COPY (SELECT * FROM orders) TO 'f/orders.json'    (FORMAT JSON);
+COPY (SELECT * FROM orders) TO 'f/orders.parquet' (FORMAT PARQUET);
+
+-- read one value back from each and see what type it is
+(SELECT 'parquet' AS fmt, typeof(order_date) AS date_type
+ FROM 'f/orders.parquet' LIMIT 1)
+UNION ALL
+(SELECT 'csv', typeof(order_date)
+ FROM read_csv_auto('f/orders.csv') LIMIT 1);</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Reading a subset from Parquet is cheap<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Because Parquet stores columns separately, reading two of them touches only those two columns' data - the engine never loads the rest. Land the full table, then pull just two columns back.</p>
+        <div class="sqlbox" data-caption="Selecting 2 columns from Parquet reads only those columns' blocks - the columnar speed win in action.">
+          <pre class="sql-src">COPY (SELECT * FROM orders) TO 'f/orders.parquet' (FORMAT PARQUET);
+
+-- only these two columns' data is read from the file
+SELECT order_id, order_date
+FROM 'f/orders.parquet'
+LIMIT 8;</pre>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: TABLE FORMATS ============ -->
+  <section class="section" id="tableformats">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · table formats</span>
+      <h2>Table formats: Iceberg, Delta, Hudi <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">Parquet is a <em>file</em>. A pile of Parquet files is not a table - you cannot safely update it, evolve its schema, or ask "what did this look like last Tuesday". <strong>Table formats</strong> - Iceberg, Delta Lake, Hudi - add a metadata layer on top of Parquet files that brings database powers to the lake. This is what turns a data lake into a "lakehouse".</p>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>What table formats add on top of Parquet<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A table format keeps a manifest of which Parquet files make up the table right now, plus a log of changes. That metadata unlocks three things plain files cannot do:</p>
+        <ul>
+          <li><strong>Transactions (ACID):</strong> a write either fully lands or not at all. No more readers catching a half-written table mid-update.</li>
+          <li><strong>Schema evolution:</strong> add, rename, or drop a column without rewriting every file. The metadata tracks the change.</li>
+          <li><strong>Time travel:</strong> query the table as it was at an earlier version or timestamp - for audits, debugging, and reproducibility.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>Honest note - not live here</strong>
+          DuckDB reads plain Parquet natively, which is why every demo on this page runs. Iceberg, Delta, and Hudi need extra extensions or engines (Spark, Trino, Flink) and are not live in this browser. We cover what they <em>do</em>; the deep dive on lakehouse table design lives in <a href="https://phoebefu6.github.io/learn-data-warehouse-with-phoebe/">learn-data-warehouse</a> (b9 there).
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>The format bake-off <span class="tag demo">★ 6 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Land the same orders to CSV and Parquet, read both back, and put them head to head. The row counts match exactly - same data - but the stored type of the date column does not: Parquet keeps DATE, CSV hands back text that needs re-parsing. That single difference is why the analytical core runs on Parquet.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Land twice:</strong> write orders to a CSV and a Parquet file from the same source query.</p></div>
+      <div class="step"><p><strong>Count both:</strong> confirm the row counts are identical - no data lost either way.</p></div>
+      <div class="step"><p><strong>Compare types:</strong> read the date column's type from each. Parquet = DATE, CSV = a re-parsed value.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="Same rows, different memory of types. Row counts equal; Parquet remembers DATE, CSV does not.">
+      <pre class="sql-src">-- land the same data as CSV and Parquet
+COPY (SELECT * FROM orders) TO 'bo/orders.csv'     (FORMAT CSV, HEADER);
+COPY (SELECT * FROM orders) TO 'bo/orders.parquet' (FORMAT PARQUET);
+
+-- counts match, but the stored date type does not
+SELECT 'parquet' AS fmt,
+       (SELECT count(*) FROM 'bo/orders.parquet')            AS rows,
+       (SELECT typeof(order_date) FROM 'bo/orders.parquet' LIMIT 1) AS date_type
+UNION ALL
+SELECT 'csv',
+       (SELECT count(*) FROM read_csv_auto('bo/orders.csv')),
+       (SELECT typeof(order_date) FROM read_csv_auto('bo/orders.csv') LIMIT 1);</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Lost types cause silent bugs.</strong> A pipeline that lands to CSV and re-reads it often re-guesses a date as a string or a zip code as a number. Downstream a sort goes alphabetical instead of chronological, or leading zeros vanish. Parquet's baked-in types remove that whole class of bug - the data comes back exactly as it went in, which is why it is the default for anything a machine will read again.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Your turn: round-trip and verify <span class="tag demo">★ 8 min · build your own</span></h2>
+    </div>
+    <p class="lede">Each editor starts fresh from Daybreak's raw source. Write to a format, read it back, and verify the trip was clean. All three run against the source tables.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q1 · Round-trip order_items through Parquet<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Write <code>order_items</code> to Parquet, read it back, and verify the row count matches the source - a clean round trip loses nothing.</p>
+        <div class="sqlbox" data-caption="Hint: COPY order_items to a parquet, then compare count from the file to count from the source table.">
+          <pre class="sql-src">COPY (SELECT * FROM order_items) TO 'rt/items.parquet' (FORMAT PARQUET);
+
+SELECT (SELECT count(*) FROM 'rt/items.parquet') AS file_rows,
+       (SELECT count(*) FROM order_items)        AS source_rows;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q2 · Land a filtered query, then aggregate<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>COPY only completed orders to Parquet, read them back, and aggregate - count orders per channel straight from the landed file.</p>
+        <div class="sqlbox" data-caption="Hint: filter to status = 'completed' in the COPY, then GROUP BY channel over the parquet file.">
+          <pre class="sql-src">COPY (SELECT * FROM orders WHERE status = 'completed')
+TO 'rt/completed.parquet' (FORMAT PARQUET);
+
+SELECT channel, count(*) AS completed_orders
+FROM 'rt/completed.parquet'
+GROUP BY channel
+ORDER BY completed_orders DESC;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Q3 · When is JSON the right choice?<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A thought exercise, no SQL. Parquet wins for the analytical core - so when would you deliberately keep data as JSON?</p>
+        <ul>
+          <li><strong>Nested, semi-structured source data:</strong> an API returns orders with a variable list of line items and optional metadata. JSON stores that nesting natively; forcing it into flat columns too early loses shape.</li>
+          <li><strong>Schema still fluid:</strong> when the source keeps adding and dropping fields, JSON absorbs the change without a rewrite. You land raw JSON, then flatten to Parquet once the schema settles.</li>
+          <li><strong>The pattern:</strong> JSON at the raw landing edge for messy, changing sources; Parquet for the cleaned, stable, analytics-facing tables. Right tool, right stage.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Audit one pipeline at work: what format does each stage land in? Flag any analytical table still sitting in CSV or JSON.</li>
+      <li>Take Demo 1 and add JSON as a third contender - compare all three row counts and date types in one result.</li>
+      <li>Find one CSV-driven job that has hit a type bug (dates as text, dropped leading zeros). Note what switching it to Parquet would fix.</li>
+      <li>Write down, for your team, the one-line rule for CSV vs JSON vs Parquet so the next person does not have to rediscover it.</li>
+      <li>Skim the Iceberg or Delta docs for "time travel" and bring one use case to session b5 - transformation is next.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the working core of the DeepLearning.AI Data Engineering Professional Certificate (Joe Reis) and Reis &amp; Housley's <em>Fundamentals of Data Engineering</em>, run on a live engine instead of slides. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Storage &amp; Queries - M1: File formats, row vs columnar</span><span class="note">Parts 1-2 · CSV/JSON vs Parquet, why format is a cost decision</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Fundamentals of Data Engineering (Reis &amp; Housley) - storage chapter</span><span class="note">Parts 1-2 · serialization, compression, columnar storage</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DLAI Storage &amp; Queries - M2: Lakehouse &amp; table formats</span><span class="note">Part 3 · Iceberg/Delta concept; depth is the warehouse course</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · What is the core trade-off between Parquet and CSV?</p>
+      <button class="qopt" type="button">A · Parquet holds more rows; CSV holds fewer</button>
+      <button class="qopt" type="button">B · CSV is columnar and fast; Parquet is row-based and slow</button>
+      <button class="qopt" type="button">C · CSV is human-readable but fat and untyped; Parquet is compressed, typed, and fast for column scans</button>
+      <p class="qwhy">CSV is readable text but uncompressed and typeless. Parquet is columnar binary - small, type-preserving, and fast for the column-slicing analytics does, at the cost of not being eyeball-readable.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · What do table formats (Iceberg, Delta, Hudi) add on top of Parquet files?</p>
+      <button class="qopt" type="button">A · Transactions, schema evolution, and time travel via a metadata layer</button>
+      <button class="qopt" type="button">B · Better compression than Parquet alone</button>
+      <button class="qopt" type="button">C · The ability to be read as plain text</button>
+      <p class="qwhy">A table format adds a metadata layer over Parquet files, bringing ACID transactions, schema evolution, and time travel - turning a pile of files into a lakehouse table.</p>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">3 · When should you keep source data as JSON rather than convert to Parquet?</p>
+      <button class="qopt" type="button">A · Never - Parquet is always better</button>
+      <button class="qopt" type="button">B · When the data is nested/semi-structured and the schema is still fluid</button>
+      <button class="qopt" type="button">C · Only when the file is very small</button>
+      <p class="qwhy">JSON natively holds nesting and absorbs schema change, so it fits messy, evolving API sources at the raw edge. Flatten to Parquet once the shape stabilises for the analytical core.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 4 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Row formats</b><span>CSV, JSON. Human-readable text, uncompressed, untyped, fat. Great for interchange and the edges.</span></div>
+      <div class="cheat-item"><b>Columnar</b><span>Parquet. Compressed typed binary, stored by column. Small and fast for analytical scans.</span></div>
+      <div class="cheat-item"><b>Format = cost + speed</b><span>Readable for humans, or small + fast for machines. It is a real decision, not a detail.</span></div>
+      <div class="cheat-item"><b>Parquet keeps types</b><span>DATE stays DATE. CSV hands everything back as text you must re-parse - a silent-bug source.</span></div>
+      <div class="cheat-item"><b>Columnar reads are cheap</b><span>Selecting 2 of 200 columns reads only those 2 columns' blocks. That is the speed win.</span></div>
+      <div class="cheat-item"><b>Table formats</b><span>Iceberg/Delta/Hudi = metadata on top of Parquet: ACID, schema evolution, time travel. The lakehouse.</span></div>
+      <div class="cheat-item"><b>Not live here</b><span>DuckDB reads Parquet natively; Iceberg/Delta need extensions/engines. Depth in the warehouse course.</span></div>
+      <div class="cheat-item"><b>Running project</b><span>Daybreak's core lands in Parquet, JSON at messy edges. Next: b5, batch transformation.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 4 of 10 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b3-ingestion-patterns.html">← Prev: Ingestion patterns</a> &nbsp;·&nbsp; <a href="b5-batch-transformation.html">Next: Batch transformation →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/de-seed.js?v=1"></script>
+<script src="../assets/de-live.js?v=2"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

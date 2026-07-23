@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 3 · Batch vs streaming - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Leader session 3 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Leader track · Session 3 of 6</div>
+    <h1>Batch vs <span class="accent">streaming</span></h1>
+    <p class="sub">This is the decision a sales rep will try to make for you. "Real-time" and "zero-ETL" sound like obvious upgrades, and they cost roughly five to ten times more to build and run than the daily batch that most reporting is perfectly happy with. This session gives you the two clocks - batch and streaming - a clear rule for when real-time actually earns that premium, and a healthy skepticism about the demo where the dashboard updates before your eyes. No code. Just the frame that keeps a good story from becoming a bad budget line.</p>
+    <div class="chip-row">
+      <span class="chip level">🔵 Leader track</span>
+      <span class="chip audience">Leaders: CxO · VPs · managers</span>
+      <span class="chip audience">No code - thinking mode</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-20 · Two clocks</span>
+      <span class="a3" style="flex:5">20-42 · When real-time earns its cost</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are in the track</h2>
+    </div>
+    <p class="lede">You have the lifecycle (a1) and you know your sources are systems you do not own (a2). Now comes the first big spending decision that lands on a leader's desk: how fresh does the data need to be? For Daybreak, the honest answer for most reporting is "yesterday's numbers are fine by breakfast." But every vendor in the market is selling "instant." This session hands you the frame to tell the two apart - to know when a few hours old is plenty, when seconds actually change a decision, and how to spot the expensive answer to a cheap question before you have signed for it.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The two clocks (batch vs streaming) and what separates them, a plain-language rule for when real-time earns its roughly 5-10x premium, an honest table of who needs which, and enough skepticism to ask "what decision changes if this is instant?" the next time someone pitches real-time.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: TWO CLOCKS ============ -->
+  <section class="section" id="clocks">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI Intro to DE M3, Source Systems M2</span>
+      <h2>Two clocks <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">There are really only two ways to move data, and they run on different clocks. <strong>Batch</strong> gathers data into scheduled chunks - every night, every hour - and processes each chunk as a unit. <strong>Streaming</strong> processes each event the moment it happens, in a continuous flow that never stops. Batch is simple and cheap and is the default for a reason. Streaming is powerful and materially more complex and expensive. Almost every architecture argument you will hear is really an argument about which clock, so it is worth seeing them side by side.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two lanes: batch processing in scheduled buckets versus a continuous stream">
+        <style>
+          .bs1H { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .bs1T { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .bs1C { font: 400 11px Inter, sans-serif; fill: #566A67; }
+          .bs1L { font: 600 11.5px Inter, sans-serif; fill: #14211F; }
+          .bs1N { font: 600 13px Inter, sans-serif; fill: #3A1C0C; }
+          .bs1Arr { stroke: #3AA39D; stroke-width: 2.5; fill: none; marker-end: url(#bs1Ah); }
+          .bs1Arr2 { stroke: #C2683A; stroke-width: 2.5; fill: none; marker-end: url(#bs1Ah2); }
+        </style>
+        <defs>
+          <marker id="bs1Ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#3AA39D"/>
+          </marker>
+          <marker id="bs1Ah2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#C2683A"/>
+          </marker>
+        </defs>
+
+        <text class="bs1H" x="40" y="34">Batch: data in scheduled chunks</text>
+        <rect x="40" y="50" width="70" height="50" rx="8" fill="#0E6F6B"/>
+        <text class="bs1T" x="62" y="80">9pm</text>
+        <rect x="200" y="50" width="70" height="50" rx="8" fill="#0E6F6B"/>
+        <text class="bs1T" x="216" y="80">10pm</text>
+        <rect x="360" y="50" width="70" height="50" rx="8" fill="#0E6F6B"/>
+        <text class="bs1T" x="376" y="80">11pm</text>
+        <rect x="520" y="50" width="70" height="50" rx="8" fill="#0E6F6B"/>
+        <text class="bs1T" x="536" y="80">12am</text>
+        <path class="bs1Arr" d="M110,75 L198,75"/>
+        <path class="bs1Arr" d="M270,75 L358,75"/>
+        <path class="bs1Arr" d="M430,75 L518,75"/>
+        <text class="bs1C" x="620" y="70">Simple · cheap</text>
+        <text class="bs1C" x="620" y="88">the default</text>
+
+        <text class="bs1H" x="40" y="164">Streaming: data as it happens</text>
+        <rect x="40" y="180" width="550" height="46" rx="23" fill="#C2683A"/>
+        <text class="bs1T" x="70" y="208">continuous flow · event by event · never stops</text>
+        <path class="bs1Arr2" d="M590,203 L640,203"/>
+        <text class="bs1C" x="650" y="198">Complex</text>
+        <text class="bs1C" x="650" y="216">costly · ~5-10x</text>
+
+        <text class="bs1H" x="40" y="278">The three dials that move with the clock</text>
+        <text class="bs1L" x="40" y="302">Latency: batch = hours &nbsp;·&nbsp; streaming = seconds</text>
+        <text class="bs1L" x="40" y="320">Cost + complexity: batch = low &nbsp;·&nbsp; streaming = high</text>
+
+        <rect x="600" y="290" width="14" height="14" rx="3" fill="#C2683A"/>
+        <text class="bs1N" x="624" y="302">Start batch.</text>
+        <text class="bs1N" x="624" y="320">Earn streaming.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - two clocks, and the dials (latency, cost, complexity) that move with them</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Batch, the sensible default<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Batch means: wait, gather, process together. Daybreak pulls the day's orders at midnight, reshapes them, and by breakfast the finance and growth teams have yesterday's clean numbers. It is the default for good reasons:</p>
+        <ul>
+          <li><strong>Simple to build and reason about.</strong> A chunk either processed or it did not. When something goes wrong, you re-run last night's batch. There is a clear before and after.</li>
+          <li><strong>Cheap to run.</strong> The compute wakes up, does its job, and sleeps. You are not paying to keep a system alive every second waiting for the next event.</li>
+          <li><strong>Enough for most decisions.</strong> Finance, planning, weekly growth reviews, board reporting - none of these change because a number is one hour fresher versus one day. The decision cadence is slower than the data cadence either way.</li>
+        </ul>
+        <p>If someone cannot articulate why daily or hourly batch is insufficient, the answer is batch. That is not being cheap; that is matching the tool to the decision.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Streaming, and why it costs more<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Streaming means the system is always on, reacting to each event as it arrives. That capability is real and sometimes essential - but the "always on" is exactly what makes it expensive. You now run infrastructure that never sleeps, and you have to answer hard questions that batch simply sidesteps: what happens when events arrive out of order, or arrive twice, or arrive late after you already reported the total? Each of those is a genuine engineering problem, and solving them well takes more specialized people and more always-running infrastructure. Industry rule of thumb: expect roughly <strong>5 to 10 times</strong> the engineering and infrastructure cost of the equivalent batch pipeline. That premium can be entirely worth it - but only for the decisions that actually need it.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: WHEN REAL-TIME EARNS IT ============ -->
+  <section class="section" id="earns">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers DLAI Source Systems M2, Fundamentals of Data Engineering</span>
+      <h2>When real-time earns its cost <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">The test is simple and it is the only one that matters: <strong>does a fresher number change a decision inside the window streaming buys you?</strong> If a human or a system will act differently because the data is seconds old instead of hours old, streaming may earn its premium. If nothing happens any sooner, you are paying 5-10x for a number that just sits there looking impressive.</p>
+
+    <table class="clean">
+      <thead><tr><th>Use case</th><th>Batch or streaming</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Payment fraud detection</td><td><strong>Streaming</strong></td><td>a blocked transaction is worthless one hour later; the decision is in the moment</td></tr>
+        <tr><td>Live operations dashboard</td><td><strong>Streaming</strong></td><td>an ops team is actively steering something right now and needs current state</td></tr>
+        <tr><td>In-session personalization</td><td><strong>Streaming</strong></td><td>recommending the next coffee only helps while the customer is still on the page</td></tr>
+        <tr><td>Daily / weekly reporting</td><td><strong>Batch</strong></td><td>the decision cadence is days; fresher-by-the-hour changes nothing</td></tr>
+        <tr><td>Finance + month-end close</td><td><strong>Batch</strong></td><td>accuracy and auditability matter far more than latency</td></tr>
+        <tr><td>Planning + forecasting</td><td><strong>Batch</strong></td><td>models run on history; seconds of freshness are irrelevant</td></tr>
+      </tbody>
+    </table>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Skepticism about "real-time" and "zero-ETL"<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Two phrases deserve a raised eyebrow in any vendor pitch:</p>
+        <ul>
+          <li><strong>"Real-time."</strong> Ask: real-time to do what? A dashboard that updates every second, watched by nobody at 3am, is not value - it is cost with a light show. Real-time is only real value when something acts on it inside the window.</li>
+          <li><strong>"Zero-ETL."</strong> The work of moving and reshaping data does not vanish because a slide says "zero." It moves - into the vendor's platform, into your bill, or into a lock-in you feel later. The transformation still happens; someone still pays for it. Treat "zero" as "hidden," and ask where it went.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Six months of streaming for a report read at noon.</strong> A team was convinced a key report needed to be real-time and spent six months building a streaming pipeline to deliver it. After launch, the analytics on the report itself showed the truth: almost every viewer opened it once, mid-morning, over coffee. Nobody looked before 11am, and nobody looked twice. A nightly batch would have served every single reader perfectly, at a fraction of the cost and complexity. The six months bought a capability no decision ever used. The question that would have saved it: "who acts on this, and when?"</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The honest split, in one line<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Notice the pattern in the table. Streaming wins where a decision is made <em>in the moment</em> and being late makes it worthless - fraud, live ops, in-session personalization. Batch wins everywhere the decision cadence is slower than the data cadence, which is most of reporting, all of finance, and all of planning. The mistake is almost never "we used streaming where batch would do" being caught early - it is caught six months and a large bill later. So the default posture is batch, and the burden of proof sits on whoever wants to spend the 5-10x.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: THE DECISION FRAME ============ -->
+  <section class="section" id="frame">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers DLAI Intro to DE M3, Storage M3</span>
+      <h2>The leader's decision frame <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Put it all together into a posture you can hold in any planning meeting: <strong>start batch, and earn your way to streaming only where latency changes a decision.</strong> And know that it is not a binary - there is a sensible middle road that gets you most of the freshness for a fraction of the streaming cost.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A decision ladder from daily batch to true streaming with cost climbing">
+        <style>
+          .dl3H { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .dl3T { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .dl3C { font: 400 11px Inter, sans-serif; fill: #FFFFFF; }
+          .dl3L { font: 600 11.5px Inter, sans-serif; fill: #566A67; }
+          .dl3N { font: 600 13px Inter, sans-serif; fill: #3A1C0C; }
+        </style>
+        <text class="dl3H" x="40" y="32">The freshness ladder - cost climbs each rung</text>
+
+        <rect x="40" y="210" width="180" height="52" rx="8" fill="#0A4A46"/>
+        <text class="dl3T" x="58" y="234">Daily batch</text>
+        <text class="dl3C" x="58" y="252">cheapest · the default</text>
+
+        <rect x="240" y="164" width="180" height="52" rx="8" fill="#0E6F6B"/>
+        <text class="dl3T" x="258" y="188">Hourly batch</text>
+        <text class="dl3C" x="258" y="206">a little fresher</text>
+
+        <rect x="440" y="118" width="180" height="52" rx="8" fill="#3AA39D"/>
+        <text class="dl3T" x="458" y="142">Micro-batch</text>
+        <text class="dl3C" x="458" y="160">minutes · middle road</text>
+
+        <rect x="640" y="72" width="200" height="52" rx="8" fill="#C2683A"/>
+        <text class="dl3T" x="658" y="96">True streaming</text>
+        <text class="dl3C" x="658" y="114">seconds · ~5-10x cost</text>
+
+        <path d="M40,270 L840,270" stroke="#DDE9E7" stroke-width="2"/>
+        <text class="dl3L" x="40" y="288">low latency need</text>
+        <text class="dl3L" x="720" y="288">high latency need</text>
+
+        <rect x="440" y="34" width="14" height="14" rx="3" fill="#C2683A"/>
+        <text class="dl3N" x="464" y="46">Climb only as far as a real decision needs it.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - climb the ladder only as far as a decision actually requires</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Micro-batch, the middle road<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Most leaders think the choice is "yesterday's data or real-time," but there is a whole ladder in between. <strong>Micro-batch</strong> runs the same simple, cheap batch machinery, just far more often - every few minutes instead of every night. You get data that is minutes old for a tiny fraction of true streaming's cost and complexity, and none of streaming's hard out-of-order and duplicate-event problems. For a huge share of "we need it fresher" requests, micro-batch is the honest answer: it satisfies the real need without buying the whole streaming stack.</p>
+        <div class="callout tip">
+          <strong>The one question to ask</strong>
+          Before approving any move up the ladder, ask: "Who acts on this, how fast, and what breaks if it is an hour old?" If the answer is "nobody, and nothing breaks," you have your rung - the cheap one. Make whoever wants to climb higher answer that question first.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Take it back to your team - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>List every "real-time" or "live" data request currently in flight in your org. For each, write who acts on it and how quickly - and be honest where the answer is "nobody, really."</li>
+      <li>Pick your most important report and ask what would break if it were one hour old, or one day old. Notice how often the honest answer is "nothing."</li>
+      <li>Find one place a vendor has pitched "zero-ETL" and ask your team where the transformation work actually went - into the platform, the bill, or a lock-in.</li>
+      <li>For one genuinely fresh-data need, check whether micro-batch (every few minutes) would satisfy it before anyone commits to true streaming.</li>
+      <li>Adopt the one question - "who acts on this, how fast, what breaks if it's an hour old?" - as a standing gate on freshness requests. Bring a real example to session a4.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the leadership-level thinking from the DeepLearning.AI Data Engineering Professional Certificate (Joe Reis) and Reis &amp; Housley's <em>Fundamentals of Data Engineering</em>, kept out of the tooling and focused on the spending decision a leader actually owns. Certificates, AWS labs, and code stay on the official platforms. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Introduction to Data Engineering - M3: Data architecture (batch + streaming)</span><span class="note">Parts 1-3 · the two clocks and the architecture choice, in exec language</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Source Systems &amp; Ingestion - M2: Streaming ingestion</span><span class="note">Parts 1-2 · where streaming lives and why it costs more</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DLAI Data Storage and Queries - M3: Streaming queries</span><span class="note">Part 3 · touched; query-side depth stays in the storage/sql courses</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · Roughly how much more do streaming pipelines cost to build and run versus equivalent batch?</p>
+      <button class="qopt" type="button">A · About the same</button>
+      <button class="qopt" type="button">B · Roughly 5 to 10 times more in engineering and infrastructure</button>
+      <button class="qopt" type="button">C · Slightly cheaper, because it is more modern</button>
+      <p class="qwhy">Streaming means always-on infrastructure and harder problems (out-of-order, duplicate, late events), so the industry rule of thumb is roughly 5-10x the cost of the equivalent batch pipeline. Worth it sometimes - but only when a decision needs it.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · What is the right test for whether real-time earns its premium?</p>
+      <button class="qopt" type="button">A · Whether a competitor already has it</button>
+      <button class="qopt" type="button">B · Whether the vendor's demo looks impressive</button>
+      <button class="qopt" type="button">C · Whether a fresher number actually changes a decision inside the window streaming buys</button>
+      <p class="qwhy">If a human or system acts differently because the data is seconds old instead of hours old, streaming may be worth it. If nothing happens any sooner, you are paying 5-10x for a number that just sits there.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · A team wants data "fresher than nightly" for a report checked once each morning. Best first move?</p>
+      <button class="qopt" type="button">A · Consider micro-batch (every few minutes) - most of the freshness for a fraction of streaming's cost</button>
+      <button class="qopt" type="button">B · Build a full streaming pipeline immediately</button>
+      <button class="qopt" type="button">C · Refuse and keep it nightly no matter what</button>
+      <p class="qwhy">The choice is not binary. Micro-batch runs the same cheap batch machinery far more often, delivering minutes-old data without streaming's cost or its out-of-order and duplicate-event problems. For a report read once a morning, it is almost certainly plenty.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 3 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Two clocks</b><span>Batch = scheduled chunks, simple + cheap. Streaming = event by event, powerful + costly.</span></div>
+      <div class="cheat-item"><b>Batch is the default</b><span>Simple to build, cheap to run, enough for most decisions. Burden of proof sits on streaming.</span></div>
+      <div class="cheat-item"><b>Streaming premium</b><span>Roughly 5-10x the engineering + infrastructure cost, because it never sleeps.</span></div>
+      <div class="cheat-item"><b>The one test</b><span>Does a fresher number change a decision inside the window streaming buys? If not, batch.</span></div>
+      <div class="cheat-item"><b>Streaming wins</b><span>Fraud, live ops, in-session personalization - decisions made in the moment, worthless if late.</span></div>
+      <div class="cheat-item"><b>Batch wins</b><span>Reporting, finance, planning - decision cadence slower than data cadence.</span></div>
+      <div class="cheat-item"><b>Micro-batch</b><span>The middle road: minutes-old data on cheap batch machinery. Often the honest answer.</span></div>
+      <div class="cheat-item"><b>Vendor skepticism</b><span>"Real-time" = for what? "Zero-ETL" = the work moved, it did not vanish. Ask where it went.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 3 of 6 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="a2-source-systems.html">← Prev: Source systems</a> &nbsp;·&nbsp; <a href="a4-build-vs-buy.html">Next: Build vs buy the stack →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

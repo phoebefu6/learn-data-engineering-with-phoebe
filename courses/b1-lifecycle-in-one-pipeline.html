@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 1 · The lifecycle in one pipeline - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Builder session 1 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Builder track · Session 1 of 10</div>
+    <h1>The lifecycle in <span class="accent">one pipeline</span></h1>
+    <p class="sub">Data engineering is the plumbing under every dashboard, model, and warehouse. Before you learn the pieces, you will run the whole thing once: pull Daybreak's raw coffee data from a source, land it, reshape it, and hand it on - the five-stage lifecycle in a single script, live on DuckDB in your browser. No install, no cluster, no cloud bill.</p>
+    <div class="chip-row">
+      <span class="chip level">🔴 Builder track</span>
+      <span class="chip audience">Practitioners: DE · analysts · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">Start here</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · The lifecycle &amp; undercurrents</span>
+      <span class="a3" style="flex:5">18-42 · Build-along: run all five stages</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>How this track works</h2>
+    </div>
+    <p class="lede">Ten sessions, one running pipeline. Daybreak - the coffee-subscription brand from <a href="https://phoebefu6.github.io/learn-sql-with-phoebe/">learn-sql</a> and <a href="https://phoebefu6.github.io/learn-data-warehouse-with-phoebe/">learn-data-warehouse</a> - has a warehouse now, but nothing reliably feeds it. That is your job this track: build the pipeline that ingests Daybreak's source data, moves it, reshapes it, and lands it ready for the warehouse. You will meet source systems (b2), ingestion patterns (b3), file formats (b4), transformation compute (b5), streaming and CDC (b6), storage engineering (b7-b8), and the reliability seam that hands off to operations (b9), then assemble it all in a capstone (b10).</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live pipeline - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A mental map of the whole data engineering lifecycle (generate → ingest → store → transform → serve) and its undercurrents, a clear sense of where DE ends and the warehouse / DataOps courses begin, and a browser tab that runs a real five-stage pipeline against Daybreak - editable any time.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE LIFECYCLE ============ -->
+  <section class="section" id="lifecycle">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI Intro to DE M2, Fundamentals of Data Engineering</span>
+      <h2>The lifecycle and its undercurrents <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">Joe Reis and Matt Housley framed data engineering as a <strong>lifecycle</strong>, not a tool list - and it stuck because it survives every tool that comes and goes. Five stages move data from where it is born to where it is used; a set of <strong>undercurrents</strong> runs beneath all of them. Learn this shape once and every tool you meet slots into it.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The data engineering lifecycle: five stages over four undercurrents">
+        <style>
+          .lcT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .lcH { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .lcC { font: 400 11px Inter, sans-serif; fill: #566A67; }
+          .lcU { font: 600 11.5px Inter, sans-serif; fill: #3A1C0C; }
+          .lcN { font: 600 13px Inter, sans-serif; fill: #3A1C0C; }
+          .lcArr { stroke: #3AA39D; stroke-width: 2.5; fill: none; marker-end: url(#lcAh); }
+        </style>
+        <defs>
+          <marker id="lcAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#3AA39D"/>
+          </marker>
+        </defs>
+        <text class="lcH" x="40" y="34">The five stages</text>
+        <rect x="26" y="48" width="150" height="52" rx="8" fill="#0A4A46"/>
+        <text class="lcT" x="42" y="70">Generation</text>
+        <text class="lcC" x="42" y="120">source systems</text>
+        <rect x="204" y="48" width="128" height="52" rx="8" fill="#0E6F6B"/>
+        <text class="lcT" x="220" y="70">Ingestion</text>
+        <text class="lcC" x="220" y="120">b2-b3-b6</text>
+        <rect x="360" y="48" width="120" height="52" rx="8" fill="#0E6F6B"/>
+        <text class="lcT" x="376" y="70">Storage</text>
+        <text class="lcC" x="376" y="120">b4-b7</text>
+        <rect x="508" y="48" width="150" height="52" rx="8" fill="#0E6F6B"/>
+        <text class="lcT" x="524" y="70">Transform</text>
+        <text class="lcC" x="524" y="120">b5-b8</text>
+        <rect x="686" y="48" width="150" height="52" rx="8" fill="#0A4A46"/>
+        <text class="lcT" x="702" y="70">Serving</text>
+        <text class="lcC" x="702" y="120">to warehouse</text>
+        <path class="lcArr" d="M176,74 L202,74"/>
+        <path class="lcArr" d="M332,74 L358,74"/>
+        <path class="lcArr" d="M480,74 L506,74"/>
+        <path class="lcArr" d="M658,74 L684,74"/>
+
+        <text class="lcH" x="40" y="176">The undercurrents (run beneath every stage)</text>
+        <rect x="26" y="190" width="196" height="34" rx="6" fill="#E8F4F3" stroke="#A6D9D4"/>
+        <text class="lcU" x="40" y="211">Security + data mgmt</text>
+        <rect x="234" y="190" width="196" height="34" rx="6" fill="#E8F4F3" stroke="#A6D9D4"/>
+        <text class="lcU" x="248" y="211">Data architecture</text>
+        <rect x="442" y="190" width="196" height="34" rx="6" fill="#FBEDE4" stroke="#C2683A"/>
+        <text class="lcU" x="456" y="211">DataOps + orchestration</text>
+        <rect x="650" y="190" width="186" height="34" rx="6" fill="#E8F4F3" stroke="#A6D9D4"/>
+        <text class="lcU" x="664" y="211">Software engineering</text>
+
+        <rect x="26" y="264" width="14" height="14" rx="3" fill="#C2683A"/>
+        <text class="lcN" x="50" y="276">The copper undercurrent (DataOps + orchestration) is the learn-dataops course, not this one.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the lifecycle this whole track walks, stage by stage</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The five stages, in one breath<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Data is <strong>generated</strong> in source systems you usually do not control (an app database, an API, a stream of clicks). You <strong>ingest</strong> it - copy it out on some schedule. You <strong>store</strong> it in a shape and format built for what comes next. You <strong>transform</strong> it into something trustworthy and useful. You <strong>serve</strong> it to the consumer - a warehouse, a dashboard, a model. That is the whole job, repeated at every scale from a laptop to a petabyte.</p>
+        <ul>
+          <li><strong>The stages are stable, the tools are not:</strong> Airflow, Spark, Kafka, dbt, Fivetran come and go - the five stages have held for decades. Learn the shape, not the logo.</li>
+          <li><strong>You rarely own generation:</strong> source systems belong to other teams. A huge part of DE craft is coping with sources you cannot change (session b2).</li>
+          <li><strong>Serving is the point:</strong> nobody thanks you for a clean pipeline nobody consumes. In this track, serving means feeding Daybreak's warehouse.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Why the lifecycle beats a tool list.</strong> A team hired for "Spark and Airflow" rebuilt everything two years later when the stack changed - but the lifecycle they were really doing never moved. Engineers who think in stages port their skills across every tool churn; engineers who think in tools get stranded.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The undercurrents, and which are ours<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Beneath the five stages run six undercurrents: security, data management, data architecture, DataOps, orchestration, and software engineering. They are not stages - they are concerns present at <em>every</em> stage. This course lives in the stages and two of the undercurrents (data architecture, software engineering). The other two have their own home:</p>
+        <ul>
+          <li><strong>DataOps + orchestration → <a href="https://phoebefu6.github.io/learn-dataops-with-phoebe/">learn-dataops</a>:</strong> scheduling DAGs, CI/CD, testing, monitoring, infrastructure as code. We build pipelines; that course operates them reliably.</li>
+          <li><strong>Modeling + warehouse design → <a href="https://phoebefu6.github.io/learn-data-warehouse-with-phoebe/">learn-data-warehouse</a>:</strong> star schemas, SCDs, marts. We deliver clean data to its front door; it models what happens inside.</li>
+          <li><strong>What stays here:</strong> getting data out of sources, moving it, choosing formats and storage, and the compute that transforms it. The engineering of the pipe itself.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: DE vs SIBLINGS ============ -->
+  <section class="section" id="boundaries">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · where this course sits</span>
+      <h2>What data engineering owns <span class="tag concept">4 min live</span></h2>
+    </div>
+    <p class="lede">Data engineering, data warehousing, and DataOps blur together in job ads, but they are three distinct crafts. Knowing the lines keeps you from re-learning what a sibling course already teaches - and tells you exactly where to hand work off.</p>
+
+    <table class="clean">
+      <thead><tr><th>Craft</th><th>Owns</th><th>In this Daybreak world</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Data engineering</strong> (here)</td><td>ingest, move, store, transform-compute</td><td>getting source data reliably to the warehouse door</td></tr>
+        <tr><td><strong>Data warehousing</strong></td><td>modeling: star schema, SCD, marts</td><td>what happens to the data inside the warehouse</td></tr>
+        <tr><td><strong>DataOps</strong></td><td>orchestrate, test, monitor, deploy</td><td>keeping the pipeline running in production</td></tr>
+      </tbody>
+    </table>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The one-sentence test<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>When a task lands on your desk, ask which verb it is. <strong>"Get this data here"</strong> is data engineering. <strong>"Shape it into facts and dimensions"</strong> is warehousing. <strong>"Make sure it runs at 2am and pages someone if it fails"</strong> is DataOps. Most real jobs blend all three, but the verb tells you which skill - and which course - the task belongs to.</p>
+        <div class="callout tip">
+          <strong>Why we keep the lines</strong>
+          You already built the Daybreak warehouse (star schema, SCDs, marts) in the sibling course. This course does not repeat it - it builds what feeds it. When you see "now the warehouse models this", that is your cue the DE job is done.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: MEET THE ENGINE ============ -->
+  <section class="section" id="engine">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · your live pipeline engine</span>
+      <h2>Meet DuckDB, your pipeline in a tab <span class="tag concept">3 min live</span></h2>
+    </div>
+    <p class="lede">Real pipelines run on clusters. Learning them should not need one. DuckDB is a full analytical engine that runs in your browser tab - it reads files, converts formats, moves and transforms data exactly like a production pipeline, minus the ops. Where a real stage needs Spark or Kafka (which cannot run in a browser), you will see the real code as a read-only snippet, clearly marked.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Your first source read<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Below is a real, editable DuckDB engine running against Daybreak's raw source tables - the OLTP system you will ingest all track. Press <strong>▶ Run</strong>. First run downloads the engine once (~8 MB, then cached).</p>
+        <div class="sqlbox" data-caption="This is the GENERATION stage - data as the source system holds it, warts and all.">
+          <pre class="sql-src">SELECT order_id, customer_id, order_date,
+       typeof(order_date) AS stored_as, status
+FROM orders
+LIMIT 5;</pre>
+        </div>
+        <div class="callout tip">
+          <strong>Note the mess</strong>
+          <code>order_date</code> is stored as text (VARCHAR), not a real date - normal for an app database, painful for analytics. Cleaning that is a transform step. The source hands you what it hands you; the pipeline copes.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Run all five stages in one script <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">The whole lifecycle, end to end, in one runnable pipeline. You will pull from the source (generation), copy orders out to a Parquet file (ingestion + storage), reshape into a clean daily table (transform), and produce the served result a warehouse would load. Every stage is one step.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Generation → Ingestion:</strong> read the raw <code>orders</code> source and write it to a Parquet file - the classic "extract to the lake" move.</p></div>
+      <div class="step"><p><strong>Storage:</strong> read the data back <em>from the file</em>, proving it now lives outside the source system.</p></div>
+      <div class="step"><p><strong>Transform:</strong> cast the text date, filter to completed orders, aggregate to daily revenue.</p></div>
+      <div class="step"><p><strong>Serving:</strong> the final table is exactly what the warehouse's loader would pick up. Pipeline done.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="Five stages, one script. Edit any step and re-run - the database is fresh each time.">
+      <pre class="sql-src">-- GENERATION + INGESTION: extract the source to a Parquet file
+COPY (SELECT * FROM orders) TO 'raw_orders.parquet' (FORMAT PARQUET);
+
+-- STORAGE: the data now lives in a file, not the source system
+CREATE TABLE landed AS SELECT * FROM 'raw_orders.parquet';
+
+-- TRANSFORM: clean + shape for analytics
+CREATE TABLE daily_revenue AS
+SELECT CAST(order_date AS DATE) AS day,
+       count(*)                 AS orders,
+       count(*) FILTER (WHERE status = 'completed') AS completed
+FROM landed
+GROUP BY day;
+
+-- SERVING: the table the warehouse would load
+SELECT * FROM daily_revenue ORDER BY day LIMIT 8;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>This is the shape of every pipeline you will ever build.</strong> Swap DuckDB for Spark, the local file for S3, and the manual run for an Airflow schedule, and this exact five-step spine is running at companies moving petabytes. The scale changes; the lifecycle does not. Everything in b2-b10 is one of these steps done properly.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Your turn: bend the pipeline <span class="tag demo">★ 10 min · build your own</span></h2>
+    </div>
+    <p class="lede">Each editor starts from the raw source. Write the step, run it, read the error, fix it - that loop is the whole skill. All three run against Daybreak's source tables.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q1 · Ingest a different source table to Parquet<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-caption="Hint: COPY (SELECT ... FROM customers) TO 'file.parquet' (FORMAT PARQUET), then read it back.">
+          <pre class="sql-src">COPY (SELECT * FROM customers) TO 'raw_customers.parquet' (FORMAT PARQUET);
+SELECT count(*) AS customers_landed FROM 'raw_customers.parquet';</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q2 · Add a transform: revenue per channel<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-caption="Hint: join orders to order_items, sum quantity * unit_price, group by channel.">
+          <pre class="sql-src">SELECT o.channel,
+       ROUND(SUM(oi.quantity * oi.unit_price), 2) AS revenue
+FROM orders o
+JOIN order_items oi ON o.order_id = oi.order_id
+WHERE o.status = 'completed'
+GROUP BY o.channel;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Q3 · Which stage is the bottleneck?<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A thought exercise, no SQL. In Demo 1, three stages are nearly free (the data is tiny) and one would dominate at real scale. Which? Answer: <strong>ingestion</strong> - moving bytes across a network from a source you do not control is almost always the slow, fragile, expensive stage. That is why b2, b3, and b6 all live there. Transform is cheap once the data has landed.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Bookmark this page - the editor is your pipeline scratchpad, a real engine any time.</li>
+      <li>Name the five lifecycle stages from memory, then map one pipeline you touch at work onto them. Which stage is missing or fragile?</li>
+      <li>Take Demo 1's script and add a second transform table (revenue by customer plan). Serve both.</li>
+      <li>For one data task on your plate, say the one-sentence test out loud: is it engineering, warehousing, or DataOps? Route it accordingly.</li>
+      <li>Bring one source system you struggle to get data out of to session b2 - source systems is exactly what b2 is about.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This track teaches the working core of the DeepLearning.AI Data Engineering Professional Certificate (Joe Reis) and Reis &amp; Housley's <em>Fundamentals of Data Engineering</em>, run on a live engine instead of slides. Certificates, AWS labs, and videos stay on the official platforms. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Introduction to Data Engineering - M2: The lifecycle and undercurrents</span><span class="note">Part 1 · the five stages + six undercurrents, framed for building</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Fundamentals of Data Engineering (Reis &amp; Housley) - lifecycle chapters</span><span class="note">Parts 1-2 · the vocabulary and the stages-over-tools mindset</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DLAI Intro to DE - M1 cloud fundamentals, M3 architecture</span><span class="note">Part 1 · touched; batch vs streaming architecture is session a3/b6</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DLAI Source Systems + Ingestion - M2 ETL vs ELT</span><span class="note">Demo 1 · the extract-load spine; full ingestion patterns in b3</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What are the five stages of the data engineering lifecycle, in order?</p>
+      <button class="qopt" type="button">A · Extract, clean, model, test, deploy</button>
+      <button class="qopt" type="button">B · Generation, ingestion, storage, transformation, serving</button>
+      <button class="qopt" type="button">C · Ingest, orchestrate, monitor, alert, archive</button>
+      <p class="qwhy">Data is generated in source systems, ingested (copied out), stored, transformed, then served to a consumer. The stages outlast every tool that implements them.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · A task says "schedule this pipeline to run nightly and alert on failure." Which craft owns it?</p>
+      <button class="qopt" type="button">A · Data engineering - it is a pipeline</button>
+      <button class="qopt" type="button">B · Data warehousing - it touches tables</button>
+      <button class="qopt" type="button">C · DataOps - orchestration and monitoring are its job (the learn-dataops course)</button>
+      <p class="qwhy">Scheduling, alerting, and monitoring are the DataOps undercurrent. This course builds the pipeline; DataOps operates it reliably. Knowing the line tells you where to hand off.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Why frame data engineering as a lifecycle rather than a set of tools?</p>
+      <button class="qopt" type="button">A · The five stages stay stable while tools (Spark, Airflow, Kafka) churn - skills built on stages transfer</button>
+      <button class="qopt" type="button">B · Tools are unimportant to data engineers</button>
+      <button class="qopt" type="button">C · Lifecycles are easier to put on a resume</button>
+      <p class="qwhy">Tools come and go every few years; the generation-to-serving lifecycle has held for decades. Think in stages and your skills port across every stack change.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 1 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>The lifecycle</b><span>Generation → ingestion → storage → transformation → serving. Five stages, stable across every tool.</span></div>
+      <div class="cheat-item"><b>Undercurrents</b><span>Security, data mgmt, architecture, DataOps, orchestration, software eng - present at every stage.</span></div>
+      <div class="cheat-item"><b>DE owns</b><span>Ingest, move, store, transform-compute. Getting source data reliably to the consumer.</span></div>
+      <div class="cheat-item"><b>Not DE</b><span>Modeling/SCD → warehouse course. Orchestration/monitoring → dataops course. SQL → sql course.</span></div>
+      <div class="cheat-item"><b>The one-sentence test</b><span>"Get this here" = DE. "Shape into facts" = warehouse. "Run it at 2am, page on fail" = DataOps.</span></div>
+      <div class="cheat-item"><b>DuckDB here</b><span>Real engine in your browser: reads files, converts formats, transforms. Spark/Kafka shown as snippets.</span></div>
+      <div class="cheat-item"><b>Ingestion is the hard stage</b><span>Moving bytes from sources you do not control is the slow, fragile, costly part. b2-b3-b6 live there.</span></div>
+      <div class="cheat-item"><b>Running project</b><span>Build the pipeline that feeds Daybreak's warehouse. Next: b2, connecting to source systems.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 1 of 10 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="../index.html">← All sessions</a> &nbsp;·&nbsp; <a href="b2-connect-and-extract.html">Next: Connect and extract →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/de-seed.js?v=1"></script>
+<script src="../assets/de-live.js?v=2"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

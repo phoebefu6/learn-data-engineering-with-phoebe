@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 3 · Ingestion patterns - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Builder session 3 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Builder track · Session 3 of 10</div>
+    <h1><span class="accent">Ingestion</span> patterns</h1>
+    <p class="sub">Once you can read a source, the next question is how much to pull and how often. This session walks the ingestion continuum - full reload versus incremental - the watermark pattern that powers "only new rows", ETL versus ELT, and idempotent batch windows. You will run an incremental extract live against Daybreak and watch the row counts shrink.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Builder track</span>
+      <span class="chip audience">Practitioners: DE · analysts · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-20 · Full vs incremental &amp; watermarks</span>
+      <span class="a3" style="flex:5">20-42 · Build-along: incremental extract</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are in the pipeline</h2>
+    </div>
+    <p class="lede">In b2 you connected to Daybreak's sources and landed a copy of each. But a real pipeline runs every day, not once - and re-copying the entire source every single day is slow and expensive. This session is about the smart part of ingestion: pulling <strong>only what changed</strong> since last time, reliably, without double-loading. Still the same lifecycle seam - generation into ingestion - now done efficiently.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live pipeline - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A clear feel for the full-reload versus incremental trade-off, the watermark pattern written in real SQL, why modern stacks default to ELT, and a live incremental extract you can point at any date - proving that "only new rows" is just a WHERE clause plus a saved high-water mark.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE CONTINUUM ============ -->
+  <section class="section" id="continuum">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI Source Systems M2</span>
+      <h2>Ingestion on a continuum <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Ingestion is not one choice, it is a slider. At one end, <strong>full reload</strong>: copy the entire source every run - dead simple, always correct, but expensive and slow as data grows. At the other, <strong>incremental</strong>: pull only rows that are new or changed - cheap and fast, but you have to track what you have already seen. Most pipelines sit somewhere on this line, chosen table by table.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Full reload versus incremental ingestion shown as two lanes with cost and complexity">
+        <style>
+          .igH { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .igT { font: 700 12px Inter, sans-serif; fill: #14211F; }
+          .igC { font: 400 11px Inter, sans-serif; fill: #566A67; }
+          .igW { font: 600 11.5px Inter, sans-serif; fill: #3A1C0C; }
+          .igArr { stroke: #3AA39D; stroke-width: 2; fill: none; marker-end: url(#igAh); }
+        </style>
+        <defs>
+          <marker id="igAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#3AA39D"/>
+          </marker>
+        </defs>
+        <rect x="26" y="30" width="150" height="44" rx="8" fill="#0A4A46"/>
+        <text class="igH" x="42" y="57">Full reload</text>
+        <rect x="230" y="20" width="90" height="18" rx="4" fill="#0E6F6B"/>
+        <rect x="330" y="20" width="90" height="18" rx="4" fill="#0E6F6B"/>
+        <rect x="430" y="20" width="90" height="18" rx="4" fill="#0E6F6B"/>
+        <rect x="230" y="44" width="90" height="18" rx="4" fill="#0E6F6B"/>
+        <rect x="330" y="44" width="90" height="18" rx="4" fill="#0E6F6B"/>
+        <rect x="430" y="44" width="90" height="18" rx="4" fill="#0E6F6B"/>
+        <path class="igArr" d="M176,52 L226,52"/>
+        <text class="igC" x="536" y="46">copies everything, every run</text>
+        <text class="igW" x="536" y="62">simple + correct · slow + costly</text>
+
+        <line x1="26" y1="110" x2="854" y2="110" stroke="#DDE9E7" stroke-width="1"/>
+
+        <rect x="26" y="140" width="150" height="44" rx="8" fill="#C2683A"/>
+        <text class="igH" x="42" y="167">Incremental</text>
+        <rect x="230" y="152" width="90" height="18" rx="4" fill="#A6D9D4"/>
+        <rect x="330" y="152" width="90" height="18" rx="4" fill="#A6D9D4"/>
+        <rect x="430" y="152" width="90" height="18" rx="4" fill="#0E6F6B"/>
+        <path class="igArr" d="M176,162 L226,162"/>
+        <text class="igC" x="536" y="156">only new / changed rows (dark = new)</text>
+        <text class="igW" x="536" y="172">cheap + fast · needs a watermark</text>
+
+        <rect x="26" y="232" width="828" height="60" rx="8" fill="#E8F4F3" stroke="#A6D9D4"/>
+        <text class="igT" x="44" y="258">The slider: small dimension table? Full reload is fine.</text>
+        <text class="igT" x="44" y="278">Huge, ever-growing fact table? Incremental, or you pay for the whole history every night.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - full reload copies all; incremental copies only what changed, at the cost of tracking</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>ETL vs ELT - where the transform runs<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The other big ingestion decision is <em>when</em> you transform. The letters are the order of operations:</p>
+        <ul>
+          <li><strong>ETL (extract, transform, load):</strong> reshape the data <em>before</em> it lands in the destination. The old default, from when storage was expensive and you cleaned data to save space.</li>
+          <li><strong>ELT (extract, load, transform):</strong> land the raw data first, transform it <em>later</em>, inside the destination. The modern default - cloud storage is cheap, so you keep the raw copy and reshape on demand.</li>
+        </ul>
+        <p>This whole track is ELT-shaped: b2-b4 land raw data, b5 and b8 transform it after it lands. Keeping the raw copy means you can re-transform any time without re-extracting from the source.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Why modern stacks went ELT.</strong> When a warehouse charged by the gigabyte, teams transformed first to store less (ETL). Once cloud storage dropped to cents, the calculus flipped: land everything raw, transform later, and you get replay, auditability, and the freedom to fix a transform bug without touching the source. That flip is why "load then transform" is now the default.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The cost of full reload as data grows<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Full reload feels harmless when a table has a thousand rows. The problem is that its cost grows with the <em>total</em> size of the source, not the amount of new data. A table that gains 1% new rows a day still gets copied 100% every night under full reload. After a year that is 365 full copies of an ever-larger table to capture a trickle of change. Incremental flips the cost to scale with change, not history - which is why every high-volume fact table eventually moves to it.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: WATERMARK ============ -->
+  <section class="section" id="watermark">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · the watermark pattern</span>
+      <h2>The watermark pattern <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Incremental ingestion needs one piece of memory: the high-water mark - the largest timestamp or id you pulled last run. Next run, you pull only rows past it. That is the whole trick. The watermark is a single saved value, and the extract is just <code>WHERE column &gt; watermark</code>.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Simulate an incremental pull<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Pretend your last run stopped at a watermark date. This run pulls only orders after it. Change the date and re-run to see the "new rows" count move. Press <strong>▶ Run</strong> (first run caches the ~8 MB engine).</p>
+        <div class="sqlbox" data-caption="The watermark is the '2026-04-01' literal. Everything after it is 'new'. Change the date to see the count move.">
+          <pre class="sql-src">-- watermark = the max order_date we saw last run
+SELECT count(*) AS new_rows_since_watermark
+FROM orders
+WHERE order_date &gt; '2026-04-01';</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Late-arriving data &amp; the safety window<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A naive watermark assumes rows always arrive in order. Reality disagrees. A mobile app buffers events offline and syncs a two-day-old order tomorrow; a batch job backfills yesterday's records at noon. If your watermark jumps straight to "now", those late rows arrive <em>behind</em> the mark and never get pulled - silent data loss.</p>
+        <div class="callout tip">
+          <strong>The safety window</strong>
+          Do not set the watermark to the newest row you saw. Set it a little behind - say, back up 1-3 days - and accept re-reading a small overlap each run. You trade a few duplicate reads (handled by idempotency, Part 3) for never missing a late row. Overlap is cheap; missing data is not.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: BATCH WINDOWS ============ -->
+  <section class="section" id="batch">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · batch windows &amp; idempotency</span>
+      <h2>Batch windows and idempotency <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">Incremental runs on a schedule, in <strong>windows</strong> - one file per day, per hour, or per month. The rule that keeps windows safe is <strong>idempotency</strong>: re-running the same window must not double-load. The clean pattern is one file per window, named by its window, so a re-run overwrites rather than appends.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>One dated file per window<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Extract one month of orders to a file named for that window. Re-running writes the same file, so the window is idempotent - run it once or ten times, the landed result is identical.</p>
+        <div class="sqlbox" data-caption="The file name encodes the window. Re-running overwrites it - safe to retry, no double-load.">
+          <pre class="sql-src">-- the March 2026 window, landed as its own dated file
+COPY (SELECT * FROM orders
+      WHERE order_date &gt;= '2026-03-01'
+        AND order_date &lt; '2026-04-01')
+TO 'windows/orders_2026-03.parquet' (FORMAT PARQUET);
+
+SELECT count(*) AS rows_in_march_window
+FROM 'windows/orders_2026-03.parquet';</pre>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Incremental extract, live <span class="tag demo">★ 6 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Watch full versus incremental side by side. First count the whole source, then land only the rows past a watermark, then count the incremental file. The gap between the two counts is exactly the bytes you did not move - the whole point of incremental ingestion.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Full size:</strong> count every row in the source - what a full reload would copy.</p></div>
+      <div class="step"><p><strong>Incremental extract:</strong> land only orders after the watermark to a Parquet file.</p></div>
+      <div class="step"><p><strong>Compare:</strong> one result shows full count next to incremental count. The difference is the saving.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="Full vs incremental in one result. Move the watermark date and watch the incremental count shrink or grow.">
+      <pre class="sql-src">-- extract only rows past the watermark
+COPY (SELECT * FROM orders WHERE order_date &gt; '2026-04-01')
+TO 'inc/orders_new.parquet' (FORMAT PARQUET);
+
+-- full reload size vs incremental size, side by side
+SELECT
+  (SELECT count(*) FROM orders)                    AS full_reload_rows,
+  (SELECT count(*) FROM 'inc/orders_new.parquet')  AS incremental_rows;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>This gap is money at scale.</strong> On a fact table with a billion rows gaining a million a day, full reload moves a billion rows every night; incremental moves a million. Same freshness, one-thousandth of the transfer, compute, and cloud bill. The two-line difference you just ran is the single highest-leverage decision in most ingestion pipelines.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Your turn: tune the ingestion <span class="tag demo">★ 8 min · build your own</span></h2>
+    </div>
+    <p class="lede">Each editor starts fresh from Daybreak's raw source. Change the watermark, size a batch window, then reason about the trade-off. All three run against the source tables.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q1 · Write the incremental filter for a new watermark<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Pick a different watermark date and count only the orders after it. Try a few dates and watch the "new rows" number respond.</p>
+        <div class="sqlbox" data-caption="Hint: change the date literal - a later watermark means fewer new rows, an earlier one means more.">
+          <pre class="sql-src">SELECT count(*) AS new_since_watermark
+FROM orders
+WHERE order_date &gt; '2026-05-01';</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q2 · Daily vs monthly batch window<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>How many orders would a single daily window carry, versus a full month? One query shows both, so you can feel the window-size trade-off.</p>
+        <div class="sqlbox" data-caption="Hint: one predicate spans a day, the other a month - compare the counts to size your window.">
+          <pre class="sql-src">SELECT
+  count(*) FILTER (WHERE order_date = '2026-03-15')            AS one_day,
+  count(*) FILTER (WHERE order_date &gt;= '2026-03-01'
+                     AND order_date &lt; '2026-04-01')            AS one_month
+FROM orders;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Q3 · Full reload or incremental?<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A thought exercise, no SQL. Given a table, how do you decide? The rule of thumb:</p>
+        <ul>
+          <li><strong>Small dimension table (customers, products):</strong> full reload. A few hundred or thousand rows are cheap to re-copy, and you dodge all the watermark bookkeeping. Simpler is better when the table is small.</li>
+          <li><strong>Huge, append-heavy fact table (orders, events, clicks):</strong> incremental. The table only grows, so full reload's cost climbs forever while incremental stays flat at "today's new rows".</li>
+          <li><strong>The tie-breaker:</strong> if the source has a reliable, indexed timestamp or id to watermark on, incremental is easy. If it does not, full reload may be the only correct option until the source adds one.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>For each table you ingest at work, decide full reload or incremental and write down the one-line reason. Note which lack a watermark column.</li>
+      <li>Take Demo 1 and add a third figure: the percentage the incremental extract saved versus full reload.</li>
+      <li>Pick one incremental source and design its safety window - how many days back would you set the watermark, and why?</li>
+      <li>Label one real pipeline at work as ETL or ELT. If it is ETL, ask what you would gain by keeping the raw landed copy.</li>
+      <li>Bring one source where late-arriving data has burned you to session b4 - formats and storage are next.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the working core of the DeepLearning.AI Data Engineering Professional Certificate (Joe Reis) and Reis &amp; Housley's <em>Fundamentals of Data Engineering</em>, run on a live engine instead of slides. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Source Systems, Data Ingestion &amp; Pipelines - M2: Ingestion</span><span class="note">Parts 1-3 · the continuum, ETL vs ELT, watermarks, batch windows</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Fundamentals of Data Engineering (Reis &amp; Housley) - ingestion chapter</span><span class="note">Parts 1-2 · full vs incremental, the ELT shift, idempotency</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DLAI Source Systems - streaming ingestion</span><span class="note">Part 1 · touched; continuous/CDC ingestion is session b6</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What is the difference between full reload and incremental ingestion?</p>
+      <button class="qopt" type="button">A · Full reload is faster; incremental is only for streaming</button>
+      <button class="qopt" type="button">B · Full reload copies the entire source every run; incremental copies only new or changed rows</button>
+      <button class="qopt" type="button">C · They produce different data; incremental drops rows</button>
+      <p class="qwhy">Full reload re-copies everything each run - simple but costly as data grows. Incremental pulls only what changed since last run, so its cost scales with change, not history.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · What does a watermark do in incremental ingestion?</p>
+      <button class="qopt" type="button">A · Records the highest timestamp or id seen last run, so the next run pulls only rows past it</button>
+      <button class="qopt" type="button">B · Encrypts the data as it moves through the pipeline</button>
+      <button class="qopt" type="button">C · Marks which rows are duplicates so they can be deleted</button>
+      <p class="qwhy">The watermark is a single saved high-water value. The next extract is just WHERE column > watermark - that one memory turns a full scan into "only new rows".</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">3 · Why do modern data stacks default to ELT over ETL?</p>
+      <button class="qopt" type="button">A · ELT is the only way to read from an API</button>
+      <button class="qopt" type="button">B · Transforming before loading is now impossible in the cloud</button>
+      <button class="qopt" type="button">C · Cheap cloud storage makes it worth landing raw data first, so you can re-transform and audit without re-extracting</button>
+      <p class="qwhy">When storage got cheap, the calculus flipped: land raw (load), transform later. You keep the raw copy for replay, auditing, and fixing transforms without touching the source.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 3 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>The continuum</b><span>Full reload (copy all) ↔ incremental (copy only new/changed). Chosen table by table.</span></div>
+      <div class="cheat-item"><b>Full reload</b><span>Simple and always correct, but cost scales with total size. Good for small dimension tables.</span></div>
+      <div class="cheat-item"><b>Incremental</b><span>Cheap and fast, cost scales with change. Good for huge, append-heavy fact tables. Needs a watermark.</span></div>
+      <div class="cheat-item"><b>Watermark</b><span>The max timestamp/id from last run. Next run pulls WHERE column > watermark. One saved value.</span></div>
+      <div class="cheat-item"><b>Safety window</b><span>Set the watermark a few days behind, not at 'now', so late-arriving rows are not missed.</span></div>
+      <div class="cheat-item"><b>ETL vs ELT</b><span>ETL transforms before load; ELT lands raw then transforms later. Modern default is ELT.</span></div>
+      <div class="cheat-item"><b>Idempotency</b><span>Re-running a window must not double-load. One dated file per window - a re-run overwrites.</span></div>
+      <div class="cheat-item"><b>Running project</b><span>Ingesting Daybreak incrementally. Next: b4, file and table formats - CSV vs JSON vs Parquet.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 3 of 10 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b2-connect-and-extract.html">← Prev: Connect and extract</a> &nbsp;·&nbsp; <a href="b4-file-and-table-formats.html">Next: File and table formats →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/de-seed.js?v=1"></script>
+<script src="../assets/de-live.js?v=2"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

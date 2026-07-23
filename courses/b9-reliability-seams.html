@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 9 · Reliability seams - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Builder session 9 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Builder track · Session 9 of 10</div>
+    <h1>Reliability <span class="accent">seams</span></h1>
+    <p class="sub">Pipelines do not break in the middle - they break at the seams, where your code meets a source you do not control. A column gets renamed. A feed arrives with nulls where numbers should be. A run dies halfway. This session teaches the defensive patterns you build into the pipe so bad data is quarantined, not fatal - and marks the exact handoff line where data engineering ends and DataOps takes over.</p>
+    <div class="chip-row">
+      <span class="chip level">🔴 Builder track</span>
+      <span class="chip audience">Practitioners: DE · analysts · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-20 · Seams, defenses, handoff</span>
+      <span class="a3" style="flex:5">20-42 · Build-along: defensive ingest</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where the pipeline stands</h2>
+    </div>
+    <p class="lede">Daybreak's pipeline now extracts, moves, stores, transforms, and processes data at any scale it will realistically see (b2-b8). It works - on good days. This session is about the bad days: the pipeline running unattended when a source silently changes shape, or a batch arrives half-corrupt. Building a pipeline that <strong>survives</strong> those moments is the last engineering skill before the capstone, and it is where you hand the running system to the operations world.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live pipeline - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A map of the three seams where pipelines break (schema drift, bad data, partial failure); the defensive patterns you build in - schema checks, data contracts, idempotency, and quarantining instead of crashing; and a clear line between what data engineering builds and what the DataOps course operates.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE SEAMS ============ -->
+  <section class="section" id="seams">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers Fundamentals of DE undercurrents, DLAI Source Systems M3</span>
+      <h2>Where pipelines break: the three seams <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">A pipeline is a chain of handoffs, and every handoff is a seam under tension. The stages themselves rarely fail - your GROUP BY does not spontaneously break. What breaks is the assumption at a seam: that the source still has the columns you expect, that the data is the type it claims, that a run either fully finishes or fully rolls back. Name the seams and you know exactly where to build your defenses.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A pipeline with its three fragile seams marked in copper">
+        <style>
+          .smT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .smH { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .smC { font: 400 11px Inter, sans-serif; fill: #566A67; }
+          .smU { font: 700 11.5px Inter, sans-serif; fill: #3A1C0C; }
+          .smN { font: 600 12px Inter, sans-serif; fill: #3A1C0C; }
+          .smArr { stroke: #C2683A; stroke-width: 2.5; fill: none; marker-end: url(#smAh); }
+        </style>
+        <defs>
+          <marker id="smAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#C2683A"/>
+          </marker>
+        </defs>
+        <text class="smH" x="30" y="34">The seams are where the tension lives</text>
+        <rect x="20" y="70" width="150" height="50" rx="8" fill="#0A4A46"/>
+        <text class="smT" x="36" y="100">Source</text>
+        <rect x="250" y="70" width="150" height="50" rx="8" fill="#0E6F6B"/>
+        <text class="smT" x="266" y="100">Ingest</text>
+        <rect x="480" y="70" width="150" height="50" rx="8" fill="#0E6F6B"/>
+        <text class="smT" x="496" y="100">Transform</text>
+        <rect x="710" y="70" width="150" height="50" rx="8" fill="#0A4A46"/>
+        <text class="smT" x="726" y="100">Serve</text>
+        <path class="smArr" d="M172,95 L246,95"/>
+        <path class="smArr" d="M402,95 L476,95"/>
+        <path class="smArr" d="M632,95 L706,95"/>
+        <rect x="150" y="150" width="140" height="32" rx="6" fill="#FBEDE4" stroke="#C2683A"/>
+        <text class="smU" x="164" y="171">seam: schema drift</text>
+        <rect x="380" y="150" width="140" height="32" rx="6" fill="#FBEDE4" stroke="#C2683A"/>
+        <text class="smU" x="394" y="171">seam: bad data</text>
+        <rect x="610" y="150" width="150" height="32" rx="6" fill="#FBEDE4" stroke="#C2683A"/>
+        <text class="smU" x="624" y="171">seam: partial failure</text>
+        <text class="smC" x="20" y="212">schema drift: a column is added, renamed, or dropped upstream without warning</text>
+        <text class="smC" x="20" y="230">bad data: nulls, duplicates, wrong types slipping through the feed</text>
+        <text class="smC" x="20" y="248">partial failure: a run dies halfway, leaving the target half-written</text>
+        <rect x="20" y="266" width="14" height="14" rx="3" fill="#C2683A"/>
+        <text class="smN" x="44" y="278">DE builds resilient seams; DataOps operates and monitors them (the sibling course).</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the three seams where pipelines break, and the handoff to DataOps</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Schema drift, bad data, partial failure<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Three failure modes cover most 3am pages:</p>
+        <ul>
+          <li><strong>Schema drift:</strong> the source team adds, renames, or drops a column and tells no one. Your pipeline either crashes or, worse, keeps running against the wrong shape and produces silently wrong numbers.</li>
+          <li><strong>Bad data:</strong> nulls in a key, duplicate rows from a re-delivered batch, a date stored as unparseable text. The data arrives but violates what downstream assumes.</li>
+          <li><strong>Partial failure:</strong> a run dies after writing half its output. Re-run it and you double-count; leave it and the target is corrupt. This is why idempotency matters.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The silent rename.</strong> An upstream team renamed <code>customer_id</code> to <code>cust_id</code> in a release. The pipeline did not crash - it read the missing column as all nulls, joined nothing, and served a dashboard showing revenue had collapsed to zero. Finance panicked for a day. A one-line schema check at the seam would have failed the run loudly instead.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: DEFENSIVE PATTERNS ============ -->
+  <section class="section" id="defenses">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · patterns you build in</span>
+      <h2>Defend the seams: quarantine, do not crash <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Good pipelines expect bad input. Instead of trusting the feed and crashing when it lies, you build checks into the pipe: assert the shape is what you agreed, cast defensively so bad values become nulls rather than exceptions, route unparseable rows to a quarantine table, and make every run safe to repeat. The goal is a pipeline that degrades gracefully - it flags the problem and keeps the good data flowing.</p>
+
+    <div class="sqlbox" data-caption="A defensive extract: TRY_CAST turns bad dates into NULL instead of crashing, so you can count good vs quarantined.">
+      <pre class="sql-src">-- simulate a messy feed: real orders plus two malformed rows
+CREATE OR REPLACE TABLE raw_feed AS
+SELECT order_id, order_date FROM orders
+UNION ALL
+VALUES (9001, 'not-a-date'), (9002, '2026-13-40');
+
+-- TRY_CAST returns NULL on failure instead of throwing - the good rows survive
+SELECT count(*)                                       AS total_rows,
+       count(TRY_CAST(order_date AS DATE))            AS good_dates,
+       count(*) - count(TRY_CAST(order_date AS DATE)) AS quarantined
+FROM raw_feed;</pre>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The data contract, in concept<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A <strong>data contract</strong> is a written, agreed-upon promise between the team that produces data and you, the team that consumes it. It pins down the shape (which columns, which types), the meaning (what <code>status = 'completed'</code> actually implies), and the service level (how fresh, how often, who to page when it breaks). It turns "the source changed and broke us" into "the source violated the contract" - a conversation with an owner, not a mystery.</p>
+        <ul>
+          <li><strong>Schema + semantics + SLA:</strong> the three parts of a useful contract. Shape alone is not enough; you need agreed meaning and freshness too.</li>
+          <li><strong>It makes drift someone's job.</strong> With a contract, a breaking change has an owner and a process, not just a downstream victim.</li>
+          <li><strong>Enforce it at the seam.</strong> A schema check at ingestion is a contract test. It fails the run loudly the moment reality drifts from the promise.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>Idempotency, plainly</strong>
+          A step is idempotent if running it twice produces the same result as running it once. Use <code>CREATE OR REPLACE TABLE</code> or delete-then-insert for a partition rather than blind appends, so a retry after a partial failure is always safe.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: THE DATAOPS HANDOFF ============ -->
+  <section class="section" id="handoff">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · where DE ends</span>
+      <h2>The handoff to DataOps <span class="tag concept">4 min live</span></h2>
+    </div>
+    <p class="lede">This seam is also the boundary of the course. Data engineering <strong>builds</strong> the resilient pipeline and emits the signals (row counts, quarantine counts, a clear pass or fail). DataOps <strong>operates</strong> it: schedules the runs, monitors the signals, alerts a human when something drifts, and tests changes in CI before they ship. Build versus operate - two crafts meeting at one line.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What data engineering builds versus what DataOps operates">
+        <style>
+          .hoT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .hoH { font: 700 13px Inter, sans-serif; fill: #14211F; }
+          .hoC { font: 500 11.5px Inter, sans-serif; fill: #566A67; }
+          .hoW { font: 500 11.5px Inter, sans-serif; fill: #3A1C0C; }
+          .hoArr { stroke: #3AA39D; stroke-width: 2.5; fill: none; marker-end: url(#hoAh); }
+        </style>
+        <defs>
+          <marker id="hoAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#3AA39D"/>
+          </marker>
+        </defs>
+        <rect x="20" y="30" width="380" height="200" rx="10" fill="#E8F4F3" stroke="#A6D9D4"/>
+        <text class="hoH" x="40" y="58">DE builds (this course)</text>
+        <text class="hoC" x="40" y="90">- schema checks at the seam</text>
+        <text class="hoC" x="40" y="116">- defensive casts + quarantine tables</text>
+        <text class="hoC" x="40" y="142">- idempotent, safe-to-retry steps</text>
+        <text class="hoC" x="40" y="168">- emits row counts + pass/fail signals</text>
+        <text class="hoC" x="40" y="200">the resilient pipeline itself</text>
+        <path class="hoArr" d="M406,130 L474,130"/>
+        <rect x="480" y="30" width="380" height="200" rx="10" fill="#FBEDE4" stroke="#C2683A"/>
+        <text class="hoH" x="500" y="58">DataOps operates (learn-dataops)</text>
+        <text class="hoW" x="500" y="90">- schedules the runs (orchestration)</text>
+        <text class="hoW" x="500" y="116">- monitors the emitted signals</text>
+        <text class="hoW" x="500" y="142">- alerts a human on drift or failure</text>
+        <text class="hoW" x="500" y="168">- tests changes in CI before shipping</text>
+        <text class="hoW" x="500" y="200">keeping it running in production</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the build-versus-operate line where data engineering hands off to DataOps</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>What lives in the sibling course, not here<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>You will not write orchestration code in this track - no DAG definitions, no CI configuration, no alerting rules. That is deliberate: those belong to <a href="https://phoebefu6.github.io/learn-dataops-with-phoebe/">learn-dataops</a>, which operates the pipeline you build here. What you owe the operators is a pipeline that is easy to run on a schedule (idempotent), easy to watch (it emits counts and a clear pass or fail), and easy to reason about when it breaks (bad data is quarantined and logged, not silently dropped).</p>
+        <div class="callout tip">
+          <strong>The clean handoff</strong>
+          When your pipeline can be re-run safely, reports what it did, and fails loudly on drift, it is ready for DataOps to schedule and monitor. That readiness is the deliverable of this session.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Build a defensive ingest <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">One script, one seam defended. A messy feed arrives with two malformed rows. You will cast defensively, filter the unparseable rows into a clean table, and count what was quarantined - proving a bad row does not kill the run, it just gets set aside.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Simulate the feed:</strong> union the real orders with two rows carrying broken dates - the reality a source can hand you.</p></div>
+      <div class="step"><p><strong>Defend:</strong> TRY_CAST the date and keep only rows that parse, building a clean table the rest of the pipeline can trust.</p></div>
+      <div class="step"><p><strong>Prove it:</strong> count rows in, rows kept, and rows quarantined. The run survives; the bad data is accounted for.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="A defensive ingest end to end. The two broken rows are quarantined, not fatal - the run completes.">
+      <pre class="sql-src">-- 1) a messy incoming feed: real orders + two malformed rows
+CREATE OR REPLACE TABLE raw_feed AS
+SELECT order_id, customer_id, order_date, status, channel FROM orders
+UNION ALL
+VALUES (9001, 99, 'not-a-date',  'completed', 'web'),
+       (9002,  3, '2026-13-40',  'completed', 'app');
+
+-- 2) defensive transform: keep only rows whose date parses
+CREATE OR REPLACE TABLE clean_orders AS
+SELECT order_id, customer_id,
+       TRY_CAST(order_date AS DATE) AS order_date,
+       status, channel
+FROM raw_feed
+WHERE TRY_CAST(order_date AS DATE) IS NOT NULL;
+
+-- 3) prove the bad rows were quarantined, not fatal
+SELECT (SELECT count(*) FROM raw_feed)      AS rows_in,
+       (SELECT count(*) FROM clean_orders)  AS rows_kept,
+       (SELECT count(*) FROM raw_feed)
+         - (SELECT count(*) FROM clean_orders) AS quarantined;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Quarantine beats crash, every time.</strong> A pipeline that dies on the first bad row blocks all the good data behind it and pages you at 3am. A pipeline that sets aside the bad rows, keeps the good ones flowing, and reports the count lets you fix the source in the morning while the business keeps running on clean data. Graceful degradation is the whole game.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Your turn: harden the seam <span class="tag demo">★ 10 min · build your own</span></h2>
+    </div>
+    <p class="lede">Two hands-on checks and one boundary question. Each editor starts from Daybreak's raw source. Write the guard, run it, read the result - this is the defensive loop you will use for every pipeline.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q1 · A schema and null check on the keys<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-caption="Hint: naming the columns is itself a schema assertion - if one is renamed upstream, the query fails loudly.">
+          <pre class="sql-src">-- naming the columns asserts they exist, and the counts check for null keys
+SELECT count(*)                                    AS total,
+       count(*) FILTER (WHERE order_id IS NULL)    AS null_order_id,
+       count(*) FILTER (WHERE customer_id IS NULL) AS null_customer_id,
+       count(*) FILTER (WHERE order_date IS NULL)  AS null_order_date
+FROM orders;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q2 · Dedupe a re-delivered batch, keep the latest<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-caption="Hint: row_number() partitioned by order_id, ordered by date descending, then keep rn = 1.">
+          <pre class="sql-src">-- simulate a re-delivered batch: two duplicate order_ids with a newer date
+CREATE OR REPLACE TABLE dup_feed AS
+SELECT order_id, order_date, status FROM orders
+UNION ALL
+SELECT order_id, '2026-06-30', 'refunded' FROM orders WHERE order_id IN (1001, 1002);
+
+-- keep only the latest row per order_id
+WITH ranked AS (
+  SELECT order_id, order_date, status,
+         row_number() OVER (PARTITION BY order_id
+                            ORDER BY order_date DESC) AS rn
+  FROM dup_feed
+)
+SELECT order_id, order_date, status
+FROM ranked
+WHERE rn = 1
+ORDER BY order_id
+LIMIT 10;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Q3 · What belongs to DE, what belongs to DataOps<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>No SQL - a boundary exercise. At this seam, sort each responsibility into build (DE) or operate (DataOps):</p>
+        <ul>
+          <li><strong>DE builds:</strong> the TRY_CAST guard, the quarantine table, the schema assertion, the idempotent write, and the counts the pipeline emits. The resilience is in the code.</li>
+          <li><strong>DataOps operates:</strong> running the pipeline nightly, watching the quarantine count, paging someone when it spikes, and gating a change through CI before it reaches production.</li>
+        </ul>
+        <p>The test: if it is a <em>property of the pipeline itself</em>, it is DE. If it is about <em>running and watching</em> the pipeline over time, it is DataOps. Build the seam here; operate it in <a href="https://phoebefu6.github.io/learn-dataops-with-phoebe/">learn-dataops</a>.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Pick one pipeline you own. Name its three seams (source-to-ingest, ingest-to-transform, transform-to-serve) and which failure mode each is most exposed to.</li>
+      <li>Add a TRY_CAST quarantine step to Demo 1 for a second column (say a numeric field), and report both quarantine counts.</li>
+      <li>Draft a one-paragraph data contract for a source you depend on: its columns, their meanings, and how fresh you need it.</li>
+      <li>For a pipeline at work, ask: could I re-run today's job right now without double-counting? If not, that step is not idempotent yet.</li>
+      <li>List which of your current reliability tasks are really DataOps, and note them as candidates for the learn-dataops course.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the reliability undercurrent of Reis &amp; Housley's <em>Fundamentals of Data Engineering</em> and the source-reliability material from the DeepLearning.AI Data Engineering Professional Certificate, run on a live engine. Certificates, cloud labs, and videos stay on the official platforms. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Fundamentals of Data Engineering (Reis &amp; Housley) - reliability undercurrents</span><span class="note">Parts 1-2 · schema drift, bad data, idempotency, data contracts</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DLAI Source Systems - M3: reliability &amp; the DataOps handoff</span><span class="note">Parts 1, 3 · seams touched; scheduling, monitoring, and CI are ceded to learn-dataops</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What is schema drift?</p>
+      <button class="qopt" type="button">A · When data slowly loses accuracy over time</button>
+      <button class="qopt" type="button">B · When a source adds, renames, or drops a column without warning, breaking downstream assumptions</button>
+      <button class="qopt" type="button">C · When a query runs slower as tables grow</button>
+      <p class="qwhy">Schema drift is an unannounced change to the shape of the source - a column added, renamed, or dropped. It either crashes the pipeline or, worse, produces silently wrong results. A schema check at the seam catches it loudly.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · What is a data contract?</p>
+      <button class="qopt" type="button">A · An agreed promise between producer and consumer covering schema, meaning, and service level</button>
+      <button class="qopt" type="button">B · A legal document signed before buying a database</button>
+      <button class="qopt" type="button">C · The SQL that defines a table</button>
+      <p class="qwhy">A data contract pins down the shape (columns and types), the semantics (what values mean), and the SLA (freshness, ownership). It turns a breaking change from a downstream mystery into a producer's responsibility.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">3 · At this seam, which task belongs to DataOps rather than data engineering?</p>
+      <button class="qopt" type="button">A · Writing the TRY_CAST guard that quarantines bad rows</button>
+      <button class="qopt" type="button">B · Making the write step idempotent</button>
+      <button class="qopt" type="button">C · Scheduling the pipeline nightly and paging someone when the quarantine count spikes</button>
+      <p class="qwhy">DE builds the resilient pipeline (guards, quarantine, idempotency). DataOps operates it - scheduling, monitoring the emitted signals, and alerting. If it is about running and watching over time, it is DataOps.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 9 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>The three seams</b><span>Source to ingest, ingest to transform, transform to serve. Pipelines break at the handoffs, not the stages.</span></div>
+      <div class="cheat-item"><b>Schema drift</b><span>A column added, renamed, or dropped upstream without warning. Catch it with a schema check that fails loudly.</span></div>
+      <div class="cheat-item"><b>Bad data</b><span>Nulls in keys, duplicate rows, unparseable types. Expect it; defend against it at ingestion.</span></div>
+      <div class="cheat-item"><b>TRY_CAST + quarantine</b><span>Cast defensively so bad values become NULL, route unparseable rows aside, keep the good data flowing.</span></div>
+      <div class="cheat-item"><b>Data contract</b><span>Agreed schema + semantics + SLA between producer and consumer. Makes drift someone's job, not your mystery.</span></div>
+      <div class="cheat-item"><b>Idempotency</b><span>Running a step twice equals running it once. CREATE OR REPLACE or delete-then-insert, not blind appends.</span></div>
+      <div class="cheat-item"><b>DE vs DataOps</b><span>DE builds the resilient pipeline and emits signals. DataOps schedules, monitors, alerts, and tests in CI.</span></div>
+      <div class="cheat-item"><b>Running project</b><span>Daybreak's ingest now quarantines bad rows instead of crashing. Next: b10, the whole pipeline end to end.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 9 of 10 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b8-distributed-processing.html">← Prev: Distributed processing</a> &nbsp;·&nbsp; <a href="b10-capstone.html">Next: Capstone →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/de-seed.js?v=1"></script>
+<script src="../assets/de-live.js?v=2"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

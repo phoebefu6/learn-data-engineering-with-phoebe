@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 2 · Connect and extract - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Builder session 2 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Builder track · Session 2 of 10</div>
+    <h1>Connect and <span class="accent">extract</span></h1>
+    <p class="sub">Every pipeline starts at a source you did not build and cannot change. This session walks the source zoo - relational databases, files, object storage, APIs, logs, streams - and shows how you pull data out of each without touching it. You will extract from Daybreak's tables, simulate a dropped file, and read a JSON payload back, all live on DuckDB in your browser.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Builder track</span>
+      <span class="chip audience">Practitioners: DE · analysts · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-20 · The source zoo &amp; extraction</span>
+      <span class="a3" style="flex:5">20-42 · Build-along: ingest three shapes</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are in the pipeline</h2>
+    </div>
+    <p class="lede">In b1 you ran the whole lifecycle once - generation, ingestion, storage, transformation, serving. Now we zoom in on the very first seam: <strong>generation → ingestion</strong>. Data is born in source systems Daybreak's app team owns; your job is to connect to each one and copy data out cleanly, without ever changing the source. Get this wrong and every stage downstream inherits the mess.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live pipeline - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A working feel for the six source shapes and how each is read differently, the habit of extracting only the columns you need, and three live extractions - a Parquet, a CSV, and a JSON round trip - proving you can land data from any source shape into a file you control.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE SOURCE ZOO ============ -->
+  <section class="section" id="zoo">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI Source Systems M1</span>
+      <h2>The source zoo <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">"Source system" is any place data is generated before it reaches you. There is not one kind - there is a zoo, and each animal is read a different way. A data engineer's first skill is recognising which shape is in front of them, because the read pattern changes completely from one to the next.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Six source shapes feeding a single extract step, then a landed file">
+        <style>
+          .szB { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+          .szH { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .szC { font: 400 10.5px Inter, sans-serif; fill: #566A67; }
+          .szE { font: 700 13px Inter, sans-serif; fill: #3A1C0C; }
+          .szN { font: 600 12px Inter, sans-serif; fill: #3A1C0C; }
+          .szArr { stroke: #3AA39D; stroke-width: 2; fill: none; marker-end: url(#szAh); }
+        </style>
+        <defs>
+          <marker id="szAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#3AA39D"/>
+          </marker>
+        </defs>
+        <text class="szH" x="26" y="26">Six source shapes</text>
+        <rect x="26" y="40" width="180" height="30" rx="6" fill="#0A4A46"/>
+        <text class="szB" x="40" y="59">Relational DB</text>
+        <text class="szC" x="212" y="59">Daybreak's tables</text>
+        <rect x="26" y="86" width="180" height="30" rx="6" fill="#0E6F6B"/>
+        <text class="szB" x="40" y="105">Files (CSV / JSON)</text>
+        <text class="szC" x="212" y="105">a dropped export</text>
+        <rect x="26" y="132" width="180" height="30" rx="6" fill="#0E6F6B"/>
+        <text class="szB" x="40" y="151">Object storage</text>
+        <text class="szC" x="212" y="151">S3 / GCS buckets</text>
+        <rect x="26" y="178" width="180" height="30" rx="6" fill="#0E6F6B"/>
+        <text class="szB" x="40" y="197">API</text>
+        <text class="szC" x="212" y="197">returns nested JSON</text>
+        <rect x="26" y="224" width="180" height="30" rx="6" fill="#0E6F6B"/>
+        <text class="szB" x="40" y="243">Logs</text>
+        <text class="szC" x="212" y="243">append-only lines</text>
+        <rect x="26" y="270" width="180" height="30" rx="6" fill="#0A4A46"/>
+        <text class="szB" x="40" y="289">Streams</text>
+        <text class="szC" x="212" y="289">events, session b6</text>
+
+        <path class="szArr" d="M206,55 L432,160"/>
+        <path class="szArr" d="M206,101 L432,166"/>
+        <path class="szArr" d="M206,147 L432,172"/>
+        <path class="szArr" d="M206,193 L432,178"/>
+        <path class="szArr" d="M206,239 L432,184"/>
+        <path class="szArr" d="M206,285 L432,190"/>
+
+        <rect x="436" y="140" width="170" height="70" rx="10" fill="#E8F4F3" stroke="#A6D9D4"/>
+        <text class="szE" x="456" y="170">Extract step</text>
+        <text class="szC" x="456" y="190">SELECT or a reader</text>
+        <text class="szC" x="456" y="203">read-only, never write</text>
+
+        <path class="szArr" d="M606,175 L672,175"/>
+        <rect x="676" y="140" width="178" height="70" rx="10" fill="#C2683A"/>
+        <text class="szB" x="696" y="170">Landed file</text>
+        <text class="szB" x="696" y="190">you now control</text>
+
+        <rect x="26" y="322" width="14" height="14" rx="3" fill="#C2683A"/>
+        <text class="szN" x="50" y="334">You extract FROM sources; you never change them. The landed copy is yours to reshape.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - six source shapes converge on one extract step, landing a copy you own</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What each shape means for how you read it<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The shape of the source decides the read pattern. There is no universal connector - part of the craft is matching tool to shape.</p>
+        <ul>
+          <li><strong>Relational (Daybreak's tables):</strong> query with SQL. A <code>SELECT</code> is your extract. Structured, typed, easy - the friendliest source.</li>
+          <li><strong>Files (CSV / JSON):</strong> someone drops an export in a folder. You read the file, not a database. Formats vary wildly.</li>
+          <li><strong>Object storage (S3 / GCS):</strong> files at cloud scale. Same idea as local files, but you point a reader at a bucket path.</li>
+          <li><strong>API:</strong> you call an endpoint over HTTP and get JSON back. Rate limits and pagination make this its own skill (card below).</li>
+          <li><strong>Logs:</strong> append-only text lines, semi-structured, huge volume. Often parsed and batched.</li>
+          <li><strong>Streams:</strong> unbounded events arriving continuously - a different mindset entirely, covered in b6.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>You extract FROM sources, you don't change them.</strong> A source system belongs to another team and often runs the live product. Writing to it, locking its tables, or hammering it with heavy queries can take the app down. The golden rule: read what you need, land your own copy, and do all your work on the copy.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why the source zoo exists at all<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Each source shape was built for its own job, not for you. An app database is tuned for fast single-row writes, not big analytical scans. An API is built to serve a mobile screen, not to dump a million rows. Logs are optimised for cheap appends. None of them were designed to feed a warehouse - which is exactly why ingestion (b3) and storage (b4-b7) exist: to translate whatever the source hands you into something analytics can use.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: EXTRACTING FROM RELATIONAL ============ -->
+  <section class="section" id="relational">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · the relational source</span>
+      <h2>Extracting from a relational source <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Daybreak's core data lives in a relational database, the friendliest source shape. Your extract is a <code>SELECT</code>. The one decision that matters early: do you drag the whole table, or only the columns you actually need? Column discipline is free performance and it starts at extraction.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Full-table extract versus a trimmed column-subset extract">
+        <style>
+          .exH { font: 700 13px Inter, sans-serif; fill: #14211F; }
+          .exL { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+          .exC { font: 400 11px Inter, sans-serif; fill: #566A67; }
+          .exW { font: 600 11.5px Inter, sans-serif; fill: #3A1C0C; }
+          .exc1 { fill: #0E6F6B; }
+          .exc2 { fill: #A6D9D4; }
+        </style>
+        <text class="exH" x="26" y="28">Full-table extract - drags every column</text>
+        <rect x="26" y="42" width="70" height="30" class="exc1"/>
+        <rect x="98" y="42" width="70" height="30" class="exc1"/>
+        <rect x="170" y="42" width="70" height="30" class="exc1"/>
+        <rect x="242" y="42" width="70" height="30" class="exc1"/>
+        <rect x="314" y="42" width="70" height="30" class="exc1"/>
+        <rect x="386" y="42" width="70" height="30" class="exc1"/>
+        <text class="exL" x="40" y="62">id</text>
+        <text class="exL" x="112" y="62">date</text>
+        <text class="exL" x="184" y="62">status</text>
+        <text class="exL" x="256" y="62">chan</text>
+        <text class="exL" x="328" y="62">cust</text>
+        <text class="exL" x="400" y="62">notes</text>
+        <text class="exC" x="480" y="62">wide, slow, wasteful</text>
+
+        <text class="exH" x="26" y="132">Column-subset extract - only what you need</text>
+        <rect x="26" y="146" width="70" height="30" class="exc1"/>
+        <rect x="98" y="146" width="70" height="30" class="exc1"/>
+        <rect x="170" y="146" width="70" height="30" class="exc1"/>
+        <rect x="242" y="146" width="70" height="30" class="exc2"/>
+        <rect x="314" y="146" width="70" height="30" class="exc2"/>
+        <rect x="386" y="146" width="70" height="30" class="exc2"/>
+        <text class="exL" x="40" y="166">id</text>
+        <text class="exL" x="112" y="166">date</text>
+        <text class="exL" x="184" y="166">chan</text>
+        <text class="exW" x="480" y="166">narrow, fast, cheap</text>
+
+        <rect x="26" y="236" width="14" height="14" rx="3" fill="#C2683A"/>
+        <text class="exW" x="50" y="248">Don't drag columns you won't use. Trim at the SELECT and every later stage is lighter.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - trimming columns at extract time is free speed for every stage after</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Extract a trimmed projection of orders<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>This is your extract from a relational source: a <code>SELECT</code> that names only the columns the pipeline needs, not <code>SELECT *</code>. Press <strong>▶ Run</strong> (first run downloads the ~8 MB engine once, then cached).</p>
+        <div class="sqlbox" data-caption="A trimmed projection - three columns instead of the whole orders row. This is a column-subset extract.">
+          <pre class="sql-src">SELECT order_id, order_date, channel
+FROM orders
+WHERE status = 'completed'
+LIMIT 8;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Reading files - the "someone dropped a file" pattern<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Half your sources arrive as files, not databases. We can simulate that exactly: write <code>orders</code> out to a CSV in the browser's virtual file system, then read it back as if a partner team had dropped it in a folder. The extract is now a file reader, not a SQL query against the source.</p>
+        <div class="sqlbox" data-caption="COPY writes a real CSV to the virtual FS; read_csv_auto reads it back - the dropped-file source pattern.">
+          <pre class="sql-src">COPY (SELECT * FROM orders) TO 'drop/orders.csv' (FORMAT CSV, HEADER);
+SELECT order_id, order_date, status
+FROM read_csv_auto('drop/orders.csv')
+LIMIT 5;</pre>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: READING JSON ============ -->
+  <section class="section" id="json">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · semi-structured sources</span>
+      <h2>Reading JSON, the API shape <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">APIs almost always hand back JSON - a semi-structured shape with nested objects and arrays, not neat rows and columns. You cannot browse a browser out to an external API here, but you can practise the exact read: write Daybreak data to JSON, then read it back and watch DuckDB flatten it into a table.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Round-trip customers through JSON<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Write <code>customers</code> to a JSON file, then read it with <code>read_json_auto</code>. An API response looks just like this file's contents - DuckDB infers the columns and flattens the structure into rows for you.</p>
+        <div class="sqlbox" data-caption="COPY to JSON, then read_json_auto back. This is the same read you would run on an API payload.">
+          <pre class="sql-src">COPY (SELECT * FROM customers) TO 'api/customers.json' (FORMAT JSON);
+SELECT customer_id, name, city, plan
+FROM read_json_auto('api/customers.json')
+LIMIT 5;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>APIs in the wild - rate limits &amp; pagination<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The browser cannot call external APIs, so this part is concept, honestly labelled. When you extract from a real API three things bite you that a database never does:</p>
+        <ul>
+          <li><strong>Rate limits:</strong> the API caps how many calls you can make per minute. Blow past it and you get throttled or blocked. You add backoff and retry logic.</li>
+          <li><strong>Pagination:</strong> the API returns 100 rows at a time with a "next page" token. A full extract means looping until the token runs out - not one query.</li>
+          <li><strong>Nested JSON:</strong> a single response often nests orders inside customers inside a wrapper. You flatten it after landing, not during the call.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>The honest pattern</strong>
+          Land the raw JSON responses to files first, then parse and flatten from the files. Never mix "call the API" and "reshape the data" in one step - decouple them so a parsing bug does not force you to re-hit a rate-limited API.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Ingest three source shapes <span class="tag demo">★ 6 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">One script, three source shapes landed to three formats: orders to Parquet, customers to CSV, products to JSON. Then read all three back and prove each one landed with a single count summary. This is a miniature multi-source ingestion.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Extract + land:</strong> COPY three source tables out to three files, one per format.</p></div>
+      <div class="step"><p><strong>Read back:</strong> point a reader at each landed file - Parquet path, <code>read_csv_auto</code>, <code>read_json_auto</code>.</p></div>
+      <div class="step"><p><strong>Prove it:</strong> a UNION-style summary counts rows in each file, showing all three sources are safely yours.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="Three shapes, three formats, one script. Each file is a copy you now own - the source was only read.">
+      <pre class="sql-src">-- extract + land three source shapes into three formats
+COPY (SELECT * FROM orders)   TO 'land/orders.parquet' (FORMAT PARQUET);
+COPY (SELECT * FROM customers) TO 'land/customers.csv' (FORMAT CSV, HEADER);
+COPY (SELECT * FROM products)  TO 'land/products.json' (FORMAT JSON);
+
+-- read each back and prove it landed
+SELECT 'orders.parquet' AS landed_file, count(*) AS rows
+FROM 'land/orders.parquet'
+UNION ALL
+SELECT 'customers.csv', count(*) FROM read_csv_auto('land/customers.csv')
+UNION ALL
+SELECT 'products.json', count(*) FROM read_json_auto('land/products.json')
+ORDER BY landed_file;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>This is what an ingestion job actually does.</strong> Swap the local files for S3 buckets and the tables for a database plus an API plus a log stream, and this exact pattern - extract each source to its own landed file, then confirm counts - is running nightly at real companies. The confirm-counts step is the difference between "the job ran" and "the job worked".</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Your turn: land your own sources <span class="tag demo">★ 8 min · build your own</span></h2>
+    </div>
+    <p class="lede">Each editor starts fresh from Daybreak's raw source. Write the extract, run it, read the count, fix if it is wrong. All three run against the source tables.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q1 · Extract completed orders to Parquet<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Extract only completed orders' id, date, and channel to a Parquet file, then read it back to confirm the count.</p>
+        <div class="sqlbox" data-caption="Hint: COPY (SELECT id, date, channel FROM orders WHERE status = 'completed') TO a parquet, then count it.">
+          <pre class="sql-src">COPY (SELECT order_id, order_date, channel
+      FROM orders
+      WHERE status = 'completed')
+TO 'out/completed.parquet' (FORMAT PARQUET);
+
+SELECT count(*) AS completed_rows FROM 'out/completed.parquet';</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q2 · Land order_items to CSV, then sum revenue<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>COPY <code>order_items</code> to a CSV, read it back with <code>read_csv_auto</code>, and sum quantity times unit price to get total revenue - all from the landed file, not the source.</p>
+        <div class="sqlbox" data-caption="Hint: SUM(quantity * unit_price) over read_csv_auto('...') gives revenue from the landed copy.">
+          <pre class="sql-src">COPY (SELECT * FROM order_items) TO 'out/items.csv' (FORMAT CSV, HEADER);
+
+SELECT ROUND(SUM(quantity * unit_price), 2) AS revenue
+FROM read_csv_auto('out/items.csv');</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Q3 · Why extract to a file at all?<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A thought exercise, no SQL. Why land data to a file instead of just querying the source every time you need it? Three reasons that matter in production:</p>
+        <ul>
+          <li><strong>Decoupling:</strong> once data is in your file, your pipeline no longer depends on the source being up, fast, or unchanged. The source team can restart their database and your job keeps running on the landed copy.</li>
+          <li><strong>Replay:</strong> if a downstream transform has a bug, you re-run it against the saved file - you do not have to re-extract from the source, which may have changed or aged out.</li>
+          <li><strong>Not hammering prod:</strong> repeatedly running heavy analytical queries against a live app database can slow or crash the product. Extract once, then work on your own copy as much as you like.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>List every source system you actually pull from at work and tag each with its shape: relational, file, object storage, API, log, or stream.</li>
+      <li>For your friendliest relational source, write a trimmed extract - name only the columns a real report needs, never <code>SELECT *</code>.</li>
+      <li>Take Demo 1's script and add a fourth source: land <code>subscriptions</code> to a format of your choice and add it to the count summary.</li>
+      <li>Find one place at work where a job queries a live source repeatedly instead of landing a copy. Note what a single extract-to-file would save.</li>
+      <li>Bring one API you struggle to extract from to session b3 - ingestion patterns is where rate limits and incrementals get solved.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the working core of the DeepLearning.AI Data Engineering Professional Certificate (Joe Reis) and Reis &amp; Housley's <em>Fundamentals of Data Engineering</em>, run on a live engine instead of slides. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Source Systems, Data Ingestion &amp; Pipelines - M1: Source systems</span><span class="note">Part 1 · the source zoo and how each shape is read differently</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Storage &amp; Queries - M1: How data is read</span><span class="note">Parts 2-3 · SELECT as extract, reading files and JSON</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Fundamentals of Data Engineering (Reis &amp; Housley) - source systems</span><span class="note">Part 1 · the "you do not own generation" mindset, applied</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What is a source system?</p>
+      <button class="qopt" type="button">A · The warehouse table your pipeline finally writes to</button>
+      <button class="qopt" type="button">B · Any place data is generated before it reaches you - a database, file, API, log, or stream</button>
+      <button class="qopt" type="button">C · The DuckDB engine running in your browser</button>
+      <p class="qwhy">A source system is where data is born, upstream of your pipeline - and you usually do not own or control it. Recognising its shape decides how you read it.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Why extract data to a file instead of querying the source every time?</p>
+      <button class="qopt" type="button">A · Files are the only thing DuckDB can read</button>
+      <button class="qopt" type="button">B · It permanently deletes the data from the source</button>
+      <button class="qopt" type="button">C · Decoupling, replay, and not hammering a live production source</button>
+      <p class="qwhy">A landed copy frees your pipeline from the source's uptime, lets you replay transforms without re-extracting, and keeps heavy queries off a live app database.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · How does a CSV source differ from a JSON source?</p>
+      <button class="qopt" type="button">A · CSV is flat rows and columns; JSON is semi-structured with nesting, the typical API shape</button>
+      <button class="qopt" type="button">B · CSV keeps data types; JSON is always faster to scan</button>
+      <button class="qopt" type="button">C · They are identical once landed</button>
+      <p class="qwhy">CSV is flat, tabular text. JSON carries nested objects and arrays - the shape APIs return - which DuckDB flattens into rows when you read it with read_json_auto.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 2 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Source system</b><span>Anywhere data is born before you: database, file, object storage, API, log, stream. You rarely own it.</span></div>
+      <div class="cheat-item"><b>The golden rule</b><span>You extract FROM sources, you don't change them. Read what you need, land your own copy, work on the copy.</span></div>
+      <div class="cheat-item"><b>SELECT is your extract</b><span>For a relational source, a SELECT is the read. Name the columns you need - never blind SELECT *.</span></div>
+      <div class="cheat-item"><b>Column discipline</b><span>Trim columns at extract time. Narrow extracts are free speed for every stage downstream.</span></div>
+      <div class="cheat-item"><b>Files &amp; CSV</b><span>read_csv_auto('f.csv') reads a dropped file. Flat rows and columns; loses types on the way in.</span></div>
+      <div class="cheat-item"><b>JSON &amp; APIs</b><span>read_json_auto('f.json') flattens nested JSON to rows - the shape APIs return.</span></div>
+      <div class="cheat-item"><b>API gotchas</b><span>Rate limits, pagination, nesting. Land raw responses to files first, then parse - decouple the two.</span></div>
+      <div class="cheat-item"><b>Running project</b><span>Landing Daybreak's sources to files you control. Next: b3, ingestion patterns - full vs incremental.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 2 of 10 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b1-lifecycle-in-one-pipeline.html">← Prev: The lifecycle in one pipeline</a> &nbsp;·&nbsp; <a href="b3-ingestion-patterns.html">Next: Ingestion patterns →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/de-seed.js?v=1"></script>
+<script src="../assets/de-live.js?v=2"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

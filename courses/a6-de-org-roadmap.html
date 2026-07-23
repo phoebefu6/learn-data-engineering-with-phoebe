@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 6 · The DE org and roadmap - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Leader session 6 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Leader track · Session 6 of 6</div>
+    <h1>The DE org and <span class="accent">roadmap</span></h1>
+    <p class="sub">You now know what data engineering owns, how it moves and stores data, and when to build or buy. The last leader question is organizational: who does this work, how do they differ from the analytics and ML people next to them, and how do you grow the capability without over-hiring on day one? This session gives you the roles, a crawl-walk-run roadmap, and an honest map of where data engineering hands off to everything else.</p>
+    <div class="chip-row">
+      <span class="chip level">🔵 Leader track</span>
+      <span class="chip audience">Leaders: CxO · VPs · managers</span>
+      <span class="chip audience">No code - thinking mode</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:5">3-20 · Who does what</span>
+      <span class="a3" style="flex:7">20-42 · The crawl-walk-run roadmap</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>The org question, and the honest close</h2>
+    </div>
+    <p class="lede">Data titles blur together in job ads, and that costs you real money - you over-hire senior data scientists to do plumbing work, or ask one data engineer to also be a modeler, an ops team, and a stats expert. This final session untangles the roles, shows how data engineering feeds every downstream consumer, and gives you a staged roadmap so you build the capability in the right order. It closes with an honest list of what this course did <em>not</em> cover and exactly where to go next.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A clear picture of the data roles (engineer, analytics engineer, ML engineer, data scientist, platform) and how DE feeds them all, a crawl-walk-run roadmap for building the capability, a quarterly set of questions for the team, and a map of where DE hands off to the sibling courses.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE ROLES ============ -->
+  <section class="section" id="roles">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI Intro to DE M4, Fundamentals of DE</span>
+      <h2>Who does what on a data team <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">There are five roles you will keep hearing, and they sit in a line from raw data to business value. Data engineers build the pipelines. Analytics engineers model the landed data closer to the warehouse. ML engineers put models into production. Data scientists find the insight and build the models. Platform engineers keep the infrastructure standing. Data engineering feeds every one of the others - it is the layer they all stand on.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Data engineering in the center feeding warehouse, BI, ML, and AI consumers">
+        <style>
+          .roleH { font: 700 13px Inter, sans-serif; fill: #14211F; }
+          .roleT { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .roleS { font: 400 11px Inter, sans-serif; fill: #A6D9D4; }
+          .roleC { font: 700 12.5px Inter, sans-serif; fill: #FFFFFF; }
+          .roleCs { font: 400 10.5px Inter, sans-serif; fill: #14211F; }
+          .roleN { font: 600 12px Inter, sans-serif; fill: #566A67; }
+          .roleArr { stroke: #3AA39D; stroke-width: 2.5; fill: none; marker-end: url(#roleAh); }
+        </style>
+        <defs>
+          <marker id="roleAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#3AA39D"/>
+          </marker>
+        </defs>
+        <text class="roleH" x="40" y="28">Data engineering feeds every downstream consumer</text>
+
+        <rect x="330" y="128" width="220" height="86" rx="12" fill="#0A4A46"/>
+        <text class="roleT" x="352" y="166">Data engineering</text>
+        <text class="roleS" x="352" y="188">ingest · move · store</text>
+        <text class="roleS" x="352" y="204">transform · serve</text>
+
+        <rect x="360" y="46" width="160" height="46" rx="8" fill="#A6D9D4"/>
+        <text class="roleC" x="378" y="68" fill="#14211F">Warehouse</text>
+        <text class="roleCs" x="378" y="84">analytics engineer</text>
+
+        <rect x="640" y="110" width="180" height="46" rx="8" fill="#A6D9D4"/>
+        <text class="roleC" x="658" y="132" fill="#14211F">BI + dashboards</text>
+        <text class="roleCs" x="658" y="148">analysts</text>
+
+        <rect x="640" y="186" width="180" height="46" rx="8" fill="#A6D9D4"/>
+        <text class="roleC" x="658" y="208" fill="#14211F">ML models</text>
+        <text class="roleCs" x="658" y="224">ML engineer · DS</text>
+
+        <rect x="360" y="252" width="160" height="46" rx="8" fill="#A6D9D4"/>
+        <text class="roleC" x="378" y="274" fill="#14211F">AI apps</text>
+        <text class="roleCs" x="378" y="290">product + DS</text>
+
+        <path class="roleArr" d="M440,128 L440,94"/>
+        <path class="roleArr" d="M550,150 L638,140"/>
+        <path class="roleArr" d="M550,185 L638,200"/>
+        <path class="roleArr" d="M440,214 L440,250"/>
+
+        <rect x="40" y="128" width="160" height="86" rx="12" fill="#C2683A"/>
+        <text class="roleC" x="58" y="160">Platform /</text>
+        <text class="roleC" x="58" y="178">infra eng</text>
+        <text class="roleS" x="58" y="200" fill="#FBEDE4">holds it all up</text>
+        <path class="roleArr" d="M200,171 L328,171"/>
+
+        <text class="roleN" x="40" y="326">DE is the layer every other data role stands on - starve it and everything above stalls.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - data engineering at the center, feeding warehouse, BI, ML, and AI</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The five roles, and where they differ<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The clearest way to tell them apart is to ask what they hand off, and to whom.</p>
+        <ul>
+          <li><strong>Data engineer:</strong> builds and runs the pipelines that get data from sources into usable, served form. Closest to the raw plumbing. Feeds everyone below.</li>
+          <li><strong>Analytics engineer:</strong> takes landed data and models it (often in dbt) into clean, tested, business-ready tables. Sits between DE and the warehouse - the bridge role.</li>
+          <li><strong>ML engineer:</strong> puts models into production reliably - the DE mindset applied to model serving.</li>
+          <li><strong>Data scientist:</strong> finds insight, runs experiments, builds the models. Consumes what DE and analytics engineering prepare.</li>
+          <li><strong>Platform / infra engineer:</strong> keeps the underlying systems running so all of the above have something to build on.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The analytics engineer, and why it matters to you<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The analytics engineer is the newest role and the one leaders most often miss. They live in the seam between data engineering and the warehouse: they take the raw tables DE lands and turn them into modeled, documented, trustworthy datasets using SQL and dbt - the modeling work owned by the <a href="https://phoebefu6.github.io/learn-data-warehouse-with-phoebe/">learn-data-warehouse</a> course. Why it matters: hiring one analytics engineer often unblocks a whole team of analysts and data scientists who were otherwise wrangling raw data themselves. It is frequently the highest-leverage data hire a growing company can make, and it is the role that most directly connects the plumbing you learned about to the business questions your leaders actually ask.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The senior DS doing junior plumbing.</strong> A company hired three expensive data scientists and watched them spend most of their time cleaning and joining raw exports instead of modeling. One analytics engineer, added to build the clean shared tables, freed all three to do the work they were hired for. The bottleneck was never talent - it was a missing role in the middle of the line.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: THE ROADMAP ============ -->
+  <section class="section" id="roadmap">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · building the capability</span>
+      <h2>The crawl-walk-run roadmap <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">You do not build a data platform all at once, and you should not try. The teams that succeed earn each stage before the next. Crawl: get one reliable daily batch feed and one clean dataset people trust. Walk: make loads incremental, tune formats and tiers, agree contracts with sources. Run: add streaming where it pays for itself, and let teams self-serve. Skipping ahead - streaming before you have reliable batch - is the most common and expensive mistake.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A crawl-walk-run roadmap strip with milestones at each stage">
+        <style>
+          .rmH { font: 700 13px Inter, sans-serif; fill: #14211F; }
+          .rmT { font: 700 15px Inter, sans-serif; fill: #FFFFFF; }
+          .rmS { font: 400 11px Inter, sans-serif; fill: #A6D9D4; }
+          .rmM { font: 600 11.5px Inter, sans-serif; fill: #566A67; }
+          .rmArr { stroke: #C2683A; stroke-width: 2.5; fill: none; marker-end: url(#rmAh); }
+        </style>
+        <defs>
+          <marker id="rmAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#C2683A"/>
+          </marker>
+        </defs>
+        <text class="rmH" x="40" y="28">Earn each stage before the next</text>
+
+        <rect x="40" y="46" width="240" height="70" rx="10" fill="#0A4A46"/>
+        <text class="rmT" x="60" y="78">Crawl</text>
+        <text class="rmS" x="60" y="100">reliable daily batch +</text>
+        <text class="rmS" x="60" y="114">one clean served dataset</text>
+
+        <rect x="320" y="46" width="240" height="70" rx="10" fill="#0E6F6B"/>
+        <text class="rmT" x="340" y="78">Walk</text>
+        <text class="rmS" x="340" y="100">incremental loads · formats +</text>
+        <text class="rmS" x="340" y="114">tiers tuned · source contracts</text>
+
+        <rect x="600" y="46" width="240" height="70" rx="10" fill="#3AA39D"/>
+        <text class="rmT" x="620" y="78">Run</text>
+        <text class="rmS" x="620" y="100">streaming where it pays ·</text>
+        <text class="rmS" x="620" y="114">self-serve pipelines · platform</text>
+
+        <path class="rmArr" d="M282,81 L318,81"/>
+        <path class="rmArr" d="M562,81 L598,81"/>
+
+        <text class="rmM" x="40" y="162">Milestone: one dataset</text>
+        <text class="rmM" x="40" y="180">the business trusts</text>
+        <text class="rmM" x="320" y="162">Milestone: cost + reliability</text>
+        <text class="rmM" x="320" y="180">under control</text>
+        <text class="rmM" x="600" y="162">Milestone: teams serve</text>
+        <text class="rmM" x="600" y="180">themselves safely</text>
+
+        <rect x="40" y="216" width="800" height="52" rx="10" fill="#FBEDE4" stroke="#C2683A"/>
+        <text class="rmM" x="60" y="240" fill="#3A1C0C">Ask the team quarterly: which stage are we honestly in, and what is the one</text>
+        <text class="rmM" x="60" y="258" fill="#3A1C0C">thing blocking the next? Beware buying "run" tools while still crawling.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - crawl to walk to run, with the milestone that earns each step</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>What each stage looks like<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The stages map directly onto everything the earlier sessions covered.</p>
+        <ul>
+          <li><strong>Crawl:</strong> one source ingested on a reliable daily schedule, landed, transformed, and served as a single dataset the business actually trusts. Unglamorous and worth more than any dashboard demo.</li>
+          <li><strong>Walk:</strong> loads become incremental (only new data, not full reloads), formats and tiers get tuned for cost (session a5), and you agree contracts with source teams so schema changes stop breaking you.</li>
+          <li><strong>Run:</strong> streaming is added only where real-time genuinely pays (session a3), and pipelines become self-serve so analysts and DS build their own without waiting on the DE team.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The most expensive mistake: skipping stages<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The pattern is predictable. A leader sees a competitor's real-time dashboard, or reads about streaming, and asks the team to build it - while the nightly batch job still fails twice a week and no one trusts the numbers. Streaming on top of an unreliable foundation is not faster insight; it is unreliable insight arriving faster. The discipline is to ask "which stage are we honestly in" and fix the current stage's weakness before buying the next stage's tools. Crawl reliably, then walk, then run. Almost every "our data platform is a mess" story is really a team that tried to run before it could crawl.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Streaming before reliable batch.</strong> A retailer invested a quarter in a real-time pipeline because the board wanted "live" numbers. Meanwhile the daily batch that fed the actual financial reports kept failing silently. They had a fast, shiny stream and a finance team that still did not trust the totals. Fixing the boring daily batch first would have delivered more value for a fraction of the spend.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: HANDOFFS + NEXT ============ -->
+  <section class="section" id="handoff">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · where DE hands off, and where to go next</span>
+      <h2>The honest map of what is next <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Data engineering does not end the story - it hands the baton. Once data is served, the warehouse models it, DataOps keeps the pipeline running, and ML and DS consume it. This course deliberately stayed in its lane, and honesty means naming what it did not cover and pointing you at the sibling courses that do.</p>
+
+    <table class="clean">
+      <thead><tr><th>Once DE has served the data</th><th>Who takes it</th><th>Go to</th></tr></thead>
+      <tbody>
+        <tr><td>modeling into facts, dimensions, marts (star schema, SCD)</td><td>analytics engineer</td><td><a href="https://phoebefu6.github.io/learn-data-warehouse-with-phoebe/">learn-data-warehouse</a></td></tr>
+        <tr><td>orchestration, CI/CD, monitoring, data-quality testing</td><td>DataOps / platform</td><td><a href="https://phoebefu6.github.io/learn-dataops-with-phoebe/">learn-dataops</a></td></tr>
+        <tr><td>writing the queries and analysis on top</td><td>analysts, data scientists</td><td><a href="https://phoebefu6.github.io/learn-sql-with-phoebe/">learn-sql</a></td></tr>
+      </tbody>
+    </table>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>What this course did NOT cover<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Honesty about scope is a leadership tool - it stops you expecting one course, or one hire, to do everything. Deliberately left out of data engineering, and owned elsewhere:</p>
+        <ul>
+          <li><strong>Orchestration, CI/CD, monitoring:</strong> scheduling pipelines, automated testing, alerting, infrastructure as code - all the "keep it running reliably" work lives in <a href="https://phoebefu6.github.io/learn-dataops-with-phoebe/">learn-dataops</a>.</li>
+          <li><strong>Dimensional modeling:</strong> star schemas, slowly changing dimensions, marts, warehouse tuning - the shape data takes inside the warehouse - is <a href="https://phoebefu6.github.io/learn-data-warehouse-with-phoebe/">learn-data-warehouse</a>.</li>
+          <li><strong>SQL as a language:</strong> the query syntax itself is <a href="https://phoebefu6.github.io/learn-sql-with-phoebe/">learn-sql</a>. This course used SQL but did not teach it.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>Why the honest gap list matters</strong>
+          A leader who knows these lines writes better job descriptions, buys the right course for the right gap, and never asks one data engineer to also be an ops team, a modeler, and a stats department. The scope is the point.
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Your quarterly questions and the road ahead<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Four questions to bring to your team every quarter: Which crawl-walk-run stage are we honestly in, and what is the one thing blocking the next? Are we missing the analytics-engineer seam between our pipelines and our warehouse? Is our storage cost and format still under control (session a5)? And are we building any real-time capability before our batch foundation is trustworthy (session a3)? For where to go next as a leader, the sibling courses in the table above cover the handoffs; the builder track (b1-b10) of this same course goes hands-on for anyone on your team who wants to actually construct the Daybreak pipeline. You have finished the leader track - you now have the vocabulary to lead a data engineering effort without having to write a line of it yourself.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Take this back to your team <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Map your current data team onto the five roles. Which role is missing or doubled up? Is anyone doing plumbing who should be doing insight?</li>
+      <li>Decide, honestly, which crawl-walk-run stage you are in. Name the single thing blocking the next stage.</li>
+      <li>Check whether you have an analytics-engineer seam between pipelines and warehouse. If not, ask whether one hire would unblock several people.</li>
+      <li>Review the "what this course did not cover" list and match each gap to a sibling course or a role you need.</li>
+      <li>Book the four quarterly questions into a recurring data-team review, and point any builders on your team at the b1-b10 track.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the org-and-roadmap core of the DeepLearning.AI Data Engineering certificate (Joe Reis) and Reis &amp; Housley's <em>Fundamentals of Data Engineering</em>, framed for leaders staffing and sequencing the work. Verified as of mid-2026 - re-verify role definitions and tooling as the field evolves. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Introduction to Data Engineering - M4: requirements to architecture, roles</span><span class="note">Parts 1-2 · the roles, how DE feeds consumers, staging the build</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Fundamentals of Data Engineering (Reis &amp; Housley) - roles &amp; maturity</span><span class="note">Parts 1-3 · data-team roles and the crawl-walk-run maturity arc</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · What does an analytics engineer do that a data engineer typically does not?</p>
+      <button class="qopt" type="button">A · Keep the servers and infrastructure running</button>
+      <button class="qopt" type="button">B · Build and schedule the raw ingestion pipelines</button>
+      <button class="qopt" type="button">C · Model landed data into clean, tested, business-ready tables (often in dbt), bridging DE and the warehouse</button>
+      <p class="qwhy">The analytics engineer sits in the seam between pipelines and warehouse, turning raw landed tables into modeled, trustworthy datasets. Hiring one often unblocks a whole team of analysts and data scientists.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · In the crawl-walk-run roadmap, what belongs to "crawl"?</p>
+      <button class="qopt" type="button">A · One reliable daily batch feed and a single clean dataset the business trusts</button>
+      <button class="qopt" type="button">B · Real-time streaming pipelines for every source</button>
+      <button class="qopt" type="button">C · Fully self-serve pipelines for all teams</button>
+      <p class="qwhy">Crawl means earning a reliable foundation first: one dependable daily batch, landed and served as a trusted dataset. Streaming and self-serve are the "run" stage, earned only after walk.</p>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">3 · A team asks to build real-time streaming while the nightly batch job still fails twice a week. What is the leadership move?</p>
+      <button class="qopt" type="button">A · Approve the streaming - real-time always beats batch</button>
+      <button class="qopt" type="button">B · Fix the reliable-batch foundation first - streaming on an unreliable base is just unreliable insight arriving faster</button>
+      <button class="qopt" type="button">C · Outsource the whole platform to a vendor</button>
+      <p class="qwhy">Skipping stages is the classic expensive mistake. Earn reliable batch (crawl) before adding streaming (run). Almost every "our platform is a mess" story is a team that ran before it could crawl.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 6 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>The five roles</b><span>Data engineer, analytics engineer, ML engineer, data scientist, platform / infra.</span></div>
+      <div class="cheat-item"><b>DE feeds all</b><span>Data engineering is the layer every other data role stands on. Starve it, all stall.</span></div>
+      <div class="cheat-item"><b>Analytics engineer</b><span>Models landed data (dbt) between DE and warehouse. Often the highest-leverage hire.</span></div>
+      <div class="cheat-item"><b>Crawl</b><span>One reliable daily batch + one clean dataset the business trusts. Earn this first.</span></div>
+      <div class="cheat-item"><b>Walk</b><span>Incremental loads, tuned formats and tiers, source contracts. Cost + reliability in hand.</span></div>
+      <div class="cheat-item"><b>Run</b><span>Streaming where it pays, self-serve pipelines, platform. Only after crawl and walk.</span></div>
+      <div class="cheat-item"><b>Do not skip stages</b><span>Streaming on an unreliable base = unreliable insight, faster. Crawl before you run.</span></div>
+      <div class="cheat-item"><b>Where to go next</b><span>Warehouse (modeling), dataops (running it), sql (query). Builder track b1-b10 = hands-on.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 6 of 6 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="a5-storage-engineering.html">← Prev: Storage engineering</a> &nbsp;·&nbsp; <a href="b1-lifecycle-in-one-pipeline.html">Continue: Builder track session 1 →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 8 · Distributed processing - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Builder session 8 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Builder track · Session 8 of 10</div>
+    <h1><span class="accent">Distributed</span> processing</h1>
+    <p class="sub">When data outgrows one machine, you split the work across a cluster. That is the promise of Spark and its kin - and it comes with a bill. This session teaches the map-shuffle-reduce mental model, the honest tradeoff (clusters are slow to start and expensive to coordinate), and why a single-node engine like DuckDB beats a cluster for most real datasets. You will feel it: 300,000 rows aggregated in milliseconds, on a laptop, in this tab.</p>
+    <div class="chip-row">
+      <span class="chip level">🔴 Builder track</span>
+      <span class="chip audience">Practitioners: DE · analysts · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-20 · Distribute, tradeoff, Spark</span>
+      <span class="a3" style="flex:5">20-42 · Build-along: single-node muscle</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where the pipeline stands</h2>
+    </div>
+    <p class="lede">Seven sessions in, Daybreak's pipeline extracts from source (b2-b3), captures change (b6), lands data in Parquet, and stores it partitioned for fast scans (b4, b7). The data is shaped and the files are laid out well. Now the question every engineer eventually asks: <strong>what if it does not fit on one machine?</strong> That is when people reach for a cluster - and, too often, reach for it far too early. This session gives you the model and the judgement.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live pipeline - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A clear mental model of distributed processing (map, shuffle, reduce) and why the shuffle is the expensive part; the judgement to know when a single machine wins and when a cluster is worth its overhead; and a browser tab that crunches 300,000 rows in milliseconds - proof that most data is smaller than you think.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: WHY DISTRIBUTE ============ -->
+  <section class="section" id="distribute">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI Storage &amp; Queries M1, Fundamentals of DE</span>
+      <h2>Why distribute, and the shuffle tax <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">One machine has a fixed ceiling: so much memory, so much disk, so many cores. When a dataset exceeds that ceiling, you split it across many machines and let each chew on a slice. That is distributed processing, and almost every big-data engine follows the same three-move shape: <strong>map</strong> (each worker processes its slice), <strong>shuffle</strong> (workers exchange data so related rows meet), <strong>reduce</strong> (combine into the answer).</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Single node versus a cluster, with the shuffle step highlighted">
+        <style>
+          .clT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .clH { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .clC { font: 400 11px Inter, sans-serif; fill: #566A67; }
+          .clU { font: 700 12.5px Inter, sans-serif; fill: #3A1C0C; }
+          .clArr { stroke: #3AA39D; stroke-width: 2.5; fill: none; marker-end: url(#clAh); }
+        </style>
+        <defs>
+          <marker id="clAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#3AA39D"/>
+          </marker>
+        </defs>
+        <text class="clH" x="30" y="34">Single node - one machine does it all</text>
+        <rect x="30" y="48" width="200" height="50" rx="8" fill="#0A4A46"/>
+        <text class="clT" x="46" y="70">1 machine</text>
+        <text class="clC" x="46" y="118">all rows in one memory</text>
+        <path class="clArr" d="M310,73 L356,73"/>
+        <rect x="360" y="48" width="160" height="50" rx="8" fill="#0E6F6B"/>
+        <text class="clT" x="376" y="78">answer</text>
+        <text class="clC" x="560" y="78">no network, no coordination overhead</text>
+
+        <text class="clH" x="30" y="176">Cluster - split, exchange, combine</text>
+        <rect x="30" y="192" width="130" height="44" rx="8" fill="#0E6F6B"/>
+        <text class="clT" x="46" y="219">worker 1</text>
+        <rect x="180" y="192" width="130" height="44" rx="8" fill="#0E6F6B"/>
+        <text class="clT" x="196" y="219">worker 2</text>
+        <rect x="330" y="192" width="130" height="44" rx="8" fill="#0E6F6B"/>
+        <text class="clT" x="346" y="219">worker 3</text>
+        <text class="clC" x="30" y="256">map: each worker scans its slice</text>
+        <rect x="30" y="266" width="430" height="34" rx="6" fill="#FBEDE4" stroke="#C2683A"/>
+        <text class="clU" x="46" y="288">SHUFFLE - rows move across the network (the tax)</text>
+        <path class="clArr" d="M470,283 L516,283"/>
+        <rect x="520" y="266" width="130" height="34" rx="6" fill="#0A4A46"/>
+        <text class="clT" x="536" y="288">reduce</text>
+        <path class="clArr" d="M660,283 L706,283"/>
+        <rect x="710" y="266" width="140" height="34" rx="6" fill="#0E6F6B"/>
+        <text class="clT" x="726" y="288">answer</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - one machine versus a cluster; the copper shuffle band is where the cost lives</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Map, shuffle, reduce - and why shuffle hurts<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Map and reduce are cheap: each worker reads local data and does local math, fully in parallel. The <strong>shuffle</strong> is the expensive move. To group all of Daybreak's orders by channel, every worker's "web" rows have to end up on the same machine as every other worker's "web" rows - which means shipping data across the network between machines. Network is orders of magnitude slower than memory, so the shuffle dominates the clock.</p>
+        <ul>
+          <li><strong>Parallelism is free; coordination is not.</strong> Splitting work sounds like pure speedup, but the machines must agree on who has what, retry failures, and move data. That coordination is the hidden cost.</li>
+          <li><strong>Shuffle = network I/O.</strong> Any operation that regroups rows (GROUP BY across partitions, a join on a non-partition key, a global sort) forces a shuffle. Minimising shuffles is most of cluster tuning.</li>
+          <li><strong>The model outlives the tool.</strong> Spark, MapReduce, Flink, Trino all shuffle. Learn the shape once and every engine reads the same.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The join that melted a cluster.</strong> A team joined two large tables on a key neither was partitioned by. The engine shuffled both tables in full across 40 machines - hours of network traffic - to answer a query a single well-partitioned machine finished in minutes. The cluster was not slow; the shuffle was.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: THE HONEST TRADEOFF ============ -->
+  <section class="section" id="tradeoff">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · the honest tradeoff</span>
+      <h2>Most data is small - reach for a cluster last <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">A cluster carries huge fixed overhead: spinning up machines, coordinating them, moving data on every shuffle, paying for idle nodes. A single-node engine has none of that. Modern machines are large - a laptop has 16-64 GB of memory, a cloud box hundreds - and engines like DuckDB are built to stream data that exceeds memory straight off disk. The result surprises people: single-node engines crush datasets up to ~100 GB and beyond, often <em>faster</em> than a cluster, because they skip the coordination tax entirely.</p>
+
+    <div class="sqlbox" data-setup="big" data-caption="300,000 rows aggregated on one machine. Read the timer: this is a laptop beating a cluster for this size.">
+      <pre class="sql-src">-- one machine, 300k rows, full aggregate - watch the milliseconds
+SELECT count(*)                                   AS rows,
+       round(sum(quantity * unit_price), 2)       AS total_revenue,
+       round(avg(quantity * unit_price), 2)       AS avg_line_value
+FROM big_orders;</pre>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Partitioning is what makes parallelism possible<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Distributed engines and single-node engines share one trick from session b7: <strong>partitioning</strong>. Splitting data into independent chunks (by month, by region) is exactly what lets many workers, or many CPU cores, process slices at once without stepping on each other. A cluster partitions across machines; DuckDB partitions across the cores in one machine. Same idea, different blast radius.</p>
+        <ul>
+          <li><strong>Good partitions cut the shuffle.</strong> If data is already partitioned by the key you group or join on, related rows are co-located and no network exchange is needed. This is why b7's partitioned Parquet layout pays off here.</li>
+          <li><strong>Too many tiny partitions hurt.</strong> Coordination cost per partition is real; thousands of 1 MB files is slower than a few well-sized ones. Right-sizing partitions is the craft.</li>
+          <li><strong>Single-node still parallelises.</strong> DuckDB uses every core. You get parallelism without a cluster - the best of both for the common case.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: SPARK IN CONCEPT ============ -->
+  <section class="section" id="spark">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · when a cluster is right</span>
+      <h2>Spark in concept, and when to reach for it <span class="tag concept">4 min live</span></h2>
+    </div>
+    <p class="lede">Apache Spark is the default distributed engine. Its core ideas are worth knowing even if you rarely run it: an immutable dataset (RDD, or the friendlier DataFrame) split across the cluster, and <strong>lazy evaluation</strong> - transformations do not run when you write them; they build a plan, and only an <em>action</em> (write, collect, count) triggers the whole plan to execute. That lets Spark optimise the plan before moving a single byte.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spark lazy evaluation: transformations build a plan, an action runs it">
+        <style>
+          .lzT { font: 700 12.5px Inter, sans-serif; fill: #FFFFFF; }
+          .lzH { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .lzC { font: 400 11px Inter, sans-serif; fill: #566A67; }
+          .lzU { font: 700 12px Inter, sans-serif; fill: #3A1C0C; }
+          .lzArr { stroke: #3AA39D; stroke-width: 2.5; fill: none; marker-end: url(#lzAh); }
+        </style>
+        <defs>
+          <marker id="lzAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#3AA39D"/>
+          </marker>
+        </defs>
+        <text class="lzH" x="30" y="34">Lazy evaluation: build a plan, then run it once</text>
+        <rect x="30" y="52" width="150" height="46" rx="8" fill="#3AA39D"/>
+        <text class="lzT" x="46" y="80">read source</text>
+        <path class="lzArr" d="M182,75 L206,75"/>
+        <rect x="210" y="52" width="150" height="46" rx="8" fill="#3AA39D"/>
+        <text class="lzT" x="226" y="80">filter rows</text>
+        <path class="lzArr" d="M362,75 L386,75"/>
+        <rect x="390" y="52" width="150" height="46" rx="8" fill="#3AA39D"/>
+        <text class="lzT" x="406" y="80">group by key</text>
+        <path class="lzArr" d="M542,75 L586,75"/>
+        <rect x="590" y="52" width="260" height="46" rx="8" fill="#C2683A"/>
+        <text class="lzT" x="606" y="80">action: .write() / .collect()</text>
+        <rect x="30" y="128" width="510" height="30" rx="6" fill="#E8F4F3" stroke="#A6D9D4"/>
+        <text class="lzU" x="46" y="148">lazy - Spark only records these, nothing runs yet</text>
+        <rect x="590" y="128" width="260" height="30" rx="6" fill="#FBEDE4" stroke="#C2683A"/>
+        <text class="lzU" x="606" y="148">the action triggers the whole plan</text>
+        <text class="lzC" x="30" y="200">On a cluster this shuffles and computes across machines. On DuckDB here, one</text>
+        <text class="lzC" x="30" y="218">machine does the same work eagerly - same result, no coordination overhead.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - transformations are lazy; an action triggers the plan across the cluster</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The same aggregate, in PySpark (read-only)<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Here is Demo 2's channel aggregate written for Spark. It cannot run in a browser - Spark needs a JVM and a cluster - so read it for shape, not to execute. Notice the lazy chain and the single action (<code>.show()</code>) that fires it:</p>
+        <div class="prompt-box">
+          <span class="label">PySpark · runs on a cluster, not here</span>
+df = spark.read.parquet("s3://daybreak/orders/")
+result = (
+    df.filter(df.status == "completed")
+      .groupBy("channel")
+      .agg((F.sum(df.quantity * df.unit_price)).alias("revenue"))
+)
+result.show()   # <- the action: only now does the plan run
+        </div>
+        <p>Reach for Spark when the data genuinely exceeds a big single machine (multiple terabytes), when your organisation already runs a Spark shop, or when a workload must span many machines for reasons beyond size. Below those thresholds, a single-node engine is simpler, cheaper, and usually faster.</p>
+        <div class="callout tip">
+          <strong>Where orchestration lives</strong>
+          Running Spark jobs on a schedule, sizing the cluster, retrying failed stages, and monitoring them is <a href="https://phoebefu6.github.io/learn-dataops-with-phoebe/">learn-dataops</a>, not this course. Here we build the processing logic; DataOps operates it.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Single-node muscle: three aggregates on 300k rows <span class="tag demo">★ 11 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">One machine, no cluster, 300,000 rows. You will run three aggregates - by channel, by month, and a window - and read the millisecond timer under each result. The lesson lands in the numbers: at this scale, spinning up a cluster would be slower than the laptop you are on.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Aggregate 1:</strong> revenue by channel - a simple GROUP BY, the bread and butter of analytics.</p></div>
+      <div class="step"><p><strong>Aggregate 2:</strong> orders by month - a GROUP BY on a derived key, still one fast scan.</p></div>
+      <div class="step"><p><strong>Aggregate 3:</strong> a window - running revenue month over month. This renders; note the total time.</p></div>
+    </div>
+
+    <div class="sqlbox" data-setup="big" data-caption="Three aggregates over 300k rows. The last statement renders - read the 'N ms in your browser' timer.">
+      <pre class="sql-src">-- 1) revenue by channel
+SELECT channel, count(*) AS orders,
+       round(sum(quantity * unit_price), 2) AS revenue
+FROM big_orders
+GROUP BY channel;
+
+-- 2) orders by month
+SELECT strftime(order_date, '%Y-%m') AS month, count(*) AS orders
+FROM big_orders
+GROUP BY month
+ORDER BY month;
+
+-- 3) a window: running monthly revenue (this result renders)
+WITH monthly AS (
+  SELECT strftime(order_date, '%Y-%m') AS month,
+         sum(quantity * unit_price)    AS rev
+  FROM big_orders
+  GROUP BY month
+)
+SELECT month,
+       round(rev, 2)                                      AS revenue,
+       round(sum(rev) OVER (ORDER BY month), 2)           AS running_revenue
+FROM monthly
+ORDER BY month;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>No cluster needed at this scale.</strong> 300,000 rows is bigger than the daily volume of many real businesses, and it finishes in a blink on one machine. Teams routinely provision Spark clusters for datasets a laptop would eat for breakfast - paying cloud bills and coordination latency for parallelism they never needed. Measure first; distribute only when the number forces you to.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Your turn: heavier work, still one machine <span class="tag demo">★ 11 min · build your own</span></h2>
+    </div>
+    <p class="lede">Two hands-on queries and one thinking exercise. Each editor re-seeds the 300k-row table fresh. Write, run, read the timer - then decide whether any of this would justify a cluster.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q1 · A heavier aggregate: channel and month together<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-setup="big" data-caption="Hint: GROUP BY two keys. Note it is still fast - two grouping columns barely move the timer.">
+          <pre class="sql-src">SELECT channel,
+       strftime(order_date, '%Y-%m')        AS month,
+       count(*)                             AS orders,
+       round(sum(quantity * unit_price), 2) AS revenue
+FROM big_orders
+GROUP BY channel, month
+ORDER BY channel, month;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q2 · A window that would shuffle in Spark<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-setup="big" data-caption="Hint: rank customers by spend within each channel. On a cluster this forces a shuffle; here it is in-memory.">
+          <pre class="sql-src">SELECT customer_id,
+       channel,
+       round(sum(quantity * unit_price), 2) AS spend,
+       rank() OVER (PARTITION BY channel
+                    ORDER BY sum(quantity * unit_price) DESC) AS rank_in_channel
+FROM big_orders
+GROUP BY customer_id, channel
+ORDER BY channel, rank_in_channel
+LIMIT 20;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Q3 · The cluster decision<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>No SQL - a judgement exercise. Before provisioning a cluster, weigh three things:</p>
+        <ul>
+          <li><strong>Data size:</strong> does it actually exceed a big single machine? A modern cloud box holds hundreds of GB of memory and streams far more off disk. If your data fits, stop here.</li>
+          <li><strong>Existing infrastructure:</strong> does your team already run and know Spark? A cluster you have to build, secure, and learn from scratch is a project, not a query.</li>
+          <li><strong>Cost:</strong> a cluster bills for idle nodes and coordination latency. A single-node run on ephemeral compute is often cheaper and simpler for the same answer.</li>
+        </ul>
+        <p>The default should be single-node. Distribute only when a specific number - not a vague "big data" instinct - forces the move.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Take one pipeline at work you believe needs "big data" tooling. Find its actual row count and byte size. Would it fit on a 64 GB machine?</li>
+      <li>In Demo 1, add a fourth aggregate (revenue by product) and note how little the timer moves. Parallelism across cores is doing the work.</li>
+      <li>Explain map-shuffle-reduce to a teammate in three sentences, and point to which step costs the most.</li>
+      <li>Download DuckDB (duckdb.org) and run Demo 2's window query against a real CSV of your own. Feel the single-node speed on real data.</li>
+      <li>List one workload in your world that genuinely justifies a cluster, and one that does not. Be honest about which is more common.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the distributed-processing core of the DeepLearning.AI Data Engineering Professional Certificate (Joe Reis) and Reis &amp; Housley's <em>Fundamentals of Data Engineering</em>, run on a live single-node engine. Certificates, cloud labs, and videos stay on the official platforms. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Storage &amp; Queries - M1: distributed query processing</span><span class="note">Part 1 · map-shuffle-reduce and why the shuffle dominates</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Fundamentals of Data Engineering (Reis &amp; Housley) - distributed compute</span><span class="note">Parts 1-2 · the tradeoff and the single-node case</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DLAI Storage &amp; Queries - M3: query engines and Spark</span><span class="note">Part 3 · Spark model touched; live Spark runs on a cluster, not here</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · In distributed processing, what is the shuffle?</p>
+      <button class="qopt" type="button">A · The step that randomises row order for fairness</button>
+      <button class="qopt" type="button">B · Moving data across the network so related rows land on the same machine - the expensive step</button>
+      <button class="qopt" type="button">C · The action that triggers a lazy plan to run</button>
+      <p class="qwhy">Map and reduce are local and cheap. The shuffle exchanges data between machines over the network to regroup rows, which is orders of magnitude slower than memory - the dominant cost of a cluster.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · When does a single-node engine like DuckDB beat a cluster?</p>
+      <button class="qopt" type="button">A · Never - clusters are always faster because they have more machines</button>
+      <button class="qopt" type="button">B · Only for datasets under a few thousand rows</button>
+      <button class="qopt" type="button">C · For most datasets (up to ~100 GB and beyond) - it skips the coordination and shuffle overhead entirely</button>
+      <p class="qwhy">Clusters carry heavy fixed overhead. For the common case - datasets that fit on one large machine - a single-node engine using all its cores finishes faster because it pays no coordination tax. Most data is small.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · When is Spark the right tool?</p>
+      <button class="qopt" type="button">A · When data truly exceeds a big single machine (multiple TB), or you already run a Spark shop</button>
+      <button class="qopt" type="button">B · Whenever a dataset has more than a million rows</button>
+      <button class="qopt" type="button">C · Any time you want your pipeline to look modern</button>
+      <p class="qwhy">Reach for a cluster last, not first. Spark earns its overhead at genuine multi-terabyte scale or where a team already operates it. Below that, single-node is simpler, cheaper, and usually faster.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 8 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Why distribute</b><span>When data exceeds one machine's memory and disk, split the work across a cluster of machines.</span></div>
+      <div class="cheat-item"><b>Map-shuffle-reduce</b><span>Map: each worker scans its slice. Shuffle: rows move across the network. Reduce: combine to the answer.</span></div>
+      <div class="cheat-item"><b>Shuffle is the tax</b><span>The shuffle moves data between machines. Network is far slower than memory, so it dominates the clock.</span></div>
+      <div class="cheat-item"><b>Most data is small</b><span>Single-node engines crush ~100 GB+ on one machine, often beating a cluster. Reach for a cluster last.</span></div>
+      <div class="cheat-item"><b>Partitioning enables parallelism</b><span>Splitting into independent chunks lets many cores or machines work at once. Good partitions cut the shuffle.</span></div>
+      <div class="cheat-item"><b>Spark model</b><span>Immutable RDD/DataFrame, lazy transformations that build a plan, an action (write/collect) triggers it.</span></div>
+      <div class="cheat-item"><b>When to use a cluster</b><span>Genuine multi-TB data, an existing Spark shop, or must-span-machines needs. Otherwise single-node.</span></div>
+      <div class="cheat-item"><b>Running project</b><span>Daybreak's aggregates run on one machine in ms. Next: b9, the seams where pipelines break.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 8 of 10 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b7-storage-engineering.html">← Prev: Storage engineering</a> &nbsp;·&nbsp; <a href="b9-reliability-seams.html">Next: Reliability seams →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/de-seed.js?v=1"></script>
+<script src="../assets/de-live.js?v=2"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

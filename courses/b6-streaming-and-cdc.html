@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 6 · Streaming and CDC - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Builder session 6 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Builder track · Session 6 of 10</div>
+    <h1><span class="accent">Streaming</span> and CDC</h1>
+    <p class="sub">So far Daybreak's data moved in scheduled chunks. But some data arrives as an endless trickle of events - a click, a login, a row changing in the source database - and waiting for tonight's batch is too slow. This session covers the streaming model, Change Data Capture, and the practical middle ground most teams actually run: the micro-batch. You will simulate a stream on DuckDB, honestly, using batch tools.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Builder track</span>
+      <span class="chip audience">Practitioners: DE · analysts · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-20 · Streams, CDC, micro-batch, tools</span>
+      <span class="a3" style="flex:5">20-42 · Micro-batch a stream</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where the pipeline stands</h2>
+    </div>
+    <p class="lede">Daybreak's pipeline can now extract from the source (b2), ingest incrementally (b3), land in good formats (b4), and transform raw into served tables (b5). Every stage so far has been <strong>batch</strong>: data moves in scheduled chunks. This session adds the other clock. Some data does not wait for a schedule - it arrives continuously, one event at a time. Streaming is how you ingest and process that; Change Data Capture is how a source database's own changes become such a stream.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live pipeline - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A clear mental model of streaming (an unbounded event log read by consumers), what CDC captures and why it matters, the micro-batch pattern that most real "streaming" quietly is, a hands-on micro-batch you run against Daybreak's events on DuckDB, and an honest decision test for when you actually need streaming versus a batch you already know how to build.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE STREAMING MODEL ============ -->
+  <section class="section" id="model">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI Source Systems M2 (streaming), Intro to DE M3</span>
+      <h2>The streaming model, and CDC <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">A batch reads a bounded chunk of data on a schedule - "all of yesterday's orders, at 2am." A stream is different: it is an <strong>unbounded log</strong> of records that arrive continuously, with no end. Consumers read the log at their own pace, tracking an <em>offset</em> - a bookmark for how far they have read. Nothing is "done"; there is always more coming. Change Data Capture turns a source database into exactly this kind of stream.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An unbounded event log with a consumer reading at an offset">
+        <style>
+          .stT { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+          .stH { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .stC { font: 400 11px Inter, sans-serif; fill: #566A67; }
+          .stN { font: 600 12px Inter, sans-serif; fill: #3A1C0C; }
+          .stArr { stroke: #3AA39D; stroke-width: 2.5; fill: none; marker-end: url(#stAh); }
+        </style>
+        <defs>
+          <marker id="stAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#3AA39D"/>
+          </marker>
+        </defs>
+        <text class="stH" x="26" y="34">The event log - records arrive continuously, never "done"</text>
+
+        <rect x="26"  y="56" width="66" height="46" rx="6" fill="#0E6F6B"/><text class="stT" x="48" y="84">e1</text>
+        <rect x="100" y="56" width="66" height="46" rx="6" fill="#0E6F6B"/><text class="stT" x="122" y="84">e2</text>
+        <rect x="174" y="56" width="66" height="46" rx="6" fill="#0E6F6B"/><text class="stT" x="196" y="84">e3</text>
+        <rect x="248" y="56" width="66" height="46" rx="6" fill="#0A4A46"/><text class="stT" x="270" y="84">e4</text>
+        <rect x="322" y="56" width="66" height="46" rx="6" fill="#0A4A46"/><text class="stT" x="344" y="84">e5</text>
+        <rect x="396" y="56" width="66" height="46" rx="6" fill="#A6D9D4"/><text class="stT" x="418" y="84" fill="#14211F">e6</text>
+        <rect x="470" y="56" width="66" height="46" rx="6" fill="#A6D9D4"/><text class="stT" x="492" y="84" fill="#14211F">e7</text>
+        <text class="stC" x="560" y="84">... more arriving →</text>
+        <path class="stArr" d="M632,79 L820,79"/>
+
+        <text class="stN" x="248" y="132">↑ offset - consumer has read up to here</text>
+        <rect x="26" y="150" width="336" height="30" rx="6" fill="#E8F4F3" stroke="#A6D9D4"/>
+        <text class="stC" x="42" y="170">already processed (offset behind this line)</text>
+        <rect x="396" y="150" width="140" height="30" rx="6" fill="#FBEDE4" stroke="#C2683A"/>
+        <text class="stN" x="412" y="170">not yet read</text>
+
+        <text class="stH" x="26" y="222">CDC - a source DB's inserts / updates / deletes become the stream</text>
+        <rect x="26"  y="238" width="150" height="40" rx="8" fill="#0A4A46"/><text class="stT" x="42" y="263">source DB log</text>
+        <rect x="230" y="238" width="150" height="40" rx="8" fill="#C2683A"/><text class="stT" x="246" y="263">CDC capture</text>
+        <rect x="434" y="238" width="150" height="40" rx="8" fill="#0E6F6B"/><text class="stT" x="450" y="263">event stream</text>
+        <path class="stArr" d="M176,258 L228,258"/>
+        <path class="stArr" d="M380,258 L432,258"/>
+      </svg>
+      <figcaption>🔍 Click to zoom - the log, the consumer's offset, and how CDC feeds it</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Batch vs streaming, and what CDC captures<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>Batch</strong> processes a bounded chunk on a schedule - simple, cheap, and right for most data. <strong>Streaming</strong> processes records one at a time as they arrive on an unbounded log - lower latency, more moving parts. The consumer tracks an <em>offset</em> so it knows where it left off and can resume after a restart.</p>
+        <ul>
+          <li><strong>The log is the core idea:</strong> events are appended to an ordered log; many consumers can read the same log independently, each at its own offset. The log does not care who reads it or when.</li>
+          <li><strong>CDC turns a database into a stream:</strong> Change Data Capture reads the source database's own transaction log and emits each insert, update, and delete as an event - so downstream systems see changes seconds after they happen, without re-querying the whole table.</li>
+          <li><strong>CDC is how "real-time replication" is really done:</strong> instead of re-extracting a table every hour (b3's incremental batch), CDC streams just the changed rows off the DB's log.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Why CDC beats re-querying.</strong> A team refreshed a 200-million-row table every hour by re-selecting the whole thing - slow, heavy, and hammering the production database. Switching to CDC, they streamed only the rows that changed, straight off the database's transaction log. The load on the source dropped to near zero and the downstream copy went from an hour stale to seconds stale. Same goal, a fundamentally lighter mechanism.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Exactly-once vs at-least-once<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Streaming systems make a delivery promise, and it is worth knowing the two you will hear. <strong>At-least-once</strong> guarantees no event is lost, but an event may be delivered twice after a failure - so your processing must be idempotent (b5) or you double-count. <strong>Exactly-once</strong> guarantees each event is processed once and only once - stronger, but costs more coordination and throughput. Most systems default to at-least-once and lean on idempotent transforms to make duplicates harmless. It is the same idempotency discipline from b5, now protecting a stream instead of a batch.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: MICRO-BATCH ============ -->
+  <section class="section" id="microbatch">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · the practical middle ground</span>
+      <h2>Micro-batch: what most "streaming" really is <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">True per-event streaming is powerful but operationally heavy. In practice, most "streaming" pipelines are <strong>micro-batches</strong>: small, frequent batches - every few seconds or minutes - over a moving time window. You get near-real-time freshness with the simplicity of batch tools you already know. Below, you treat Daybreak's <code>events</code> table as an arriving stream and process one window.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Batch versus micro-batch versus streaming, on a latency spectrum">
+        <style>
+          .mbT { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+          .mbH { font: 700 13px Inter, sans-serif; fill: #14211F; }
+          .mbC { font: 400 11px Inter, sans-serif; fill: #566A67; }
+          .mbN { font: 600 12px Inter, sans-serif; fill: #3A1C0C; }
+        </style>
+        <text class="mbH" x="26" y="30">Batch - one big chunk on a schedule (e.g. nightly)</text>
+        <rect x="26" y="42" width="560" height="34" rx="6" fill="#0A4A46"/>
+        <text class="mbT" x="46" y="64">a whole day of events, processed once at 2am</text>
+        <text class="mbC" x="600" y="64">highest latency</text>
+
+        <text class="mbH" x="26" y="112">Micro-batch - small frequent windows (most "streaming")</text>
+        <rect x="26"  y="124" width="132" height="34" rx="6" fill="#0E6F6B"/><text class="mbT" x="60" y="146">window</text>
+        <rect x="166" y="124" width="132" height="34" rx="6" fill="#0E6F6B"/><text class="mbT" x="200" y="146">window</text>
+        <rect x="306" y="124" width="132" height="34" rx="6" fill="#0E6F6B"/><text class="mbT" x="340" y="146">window</text>
+        <rect x="446" y="124" width="132" height="34" rx="6" fill="#0E6F6B"/><text class="mbT" x="480" y="146">window</text>
+        <text class="mbC" x="600" y="146">minutes latency</text>
+
+        <text class="mbH" x="26" y="194">Streaming - one event at a time, the instant it arrives</text>
+        <rect x="26"  y="206" width="26" height="30" rx="4" fill="#C2683A"/>
+        <rect x="60"  y="206" width="26" height="30" rx="4" fill="#C2683A"/>
+        <rect x="94"  y="206" width="26" height="30" rx="4" fill="#C2683A"/>
+        <rect x="128" y="206" width="26" height="30" rx="4" fill="#C2683A"/>
+        <rect x="162" y="206" width="26" height="30" rx="4" fill="#C2683A"/>
+        <rect x="196" y="206" width="26" height="30" rx="4" fill="#C2683A"/>
+        <rect x="230" y="206" width="26" height="30" rx="4" fill="#C2683A"/>
+        <text class="mbN" x="280" y="227">each event processed on arrival</text>
+        <text class="mbC" x="600" y="227">lowest latency, most ops</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the same events, three grains of freshness and cost</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Process one window of the event stream<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Pretend <code>events</code> is a live log. A micro-batch processes just the slice inside the current window - here, the first week of March - and aggregates by event type. In a real streaming job this same query would fire every few minutes over the newest window. Press <strong>▶ Run</strong>.</p>
+        <div class="sqlbox" data-caption="One micro-batch = one time window over the arriving log, aggregated. Next run, you would advance the window.">
+          <pre class="sql-src">-- one micro-batch window over the "stream" of events
+SELECT event_type,
+       count(*) AS events_in_window
+FROM events
+WHERE CAST(event_date AS DATE)
+      BETWEEN DATE '2026-03-01' AND DATE '2026-03-07'
+GROUP BY event_type
+ORDER BY events_in_window DESC;</pre>
+        </div>
+        <div class="callout tip">
+          <strong>The window is the whole idea</strong>
+          Batch asks "process everything." Streaming and micro-batch ask "process the slice that arrived since my last offset." Change the two dates and you have advanced the offset to the next window - which is exactly what Demo 1 does.
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Exactly-once vs at-least-once, in a micro-batch<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A micro-batch inherits the same delivery question. If a window is retried after a crash, at-least-once means some events in it may be processed twice. The safe pattern: make each window's output idempotent - key the result by (window, event_type) and rebuild it with <code>CREATE OR REPLACE</code> or a merge, so re-processing a window overwrites rather than appends. This is why b5's idempotency lesson matters even more once data is arriving continuously: retries are not rare edge cases in streaming, they are routine.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: STREAMING TOOLS ============ -->
+  <section class="section" id="tools">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers DLAI Source Systems M2 (Kinesis), Storage M3 (◐)</span>
+      <h2>Streaming tools, in concept <span class="tag concept">4 min live</span></h2>
+    </div>
+    <p class="lede">Real streaming splits into two roles: the <strong>log</strong> that holds the events, and the <strong>processor</strong> that reads and transforms them. Kafka and Amazon Kinesis are logs; Flink and Spark Streaming are processors; Debezium is the most common CDC tool feeding database changes into a log. None of these run in a browser - they need running clusters - so the snippets below are read-only, honestly labeled. Orchestrating and operating them is the DataOps course, not this one.</p>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The log and the processor (read-only)<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A Kafka consumer reading events off a topic - the log side. This needs a running Kafka cluster, so read it, do not run it:</p>
+        <div class="prompt-box">
+          <span class="label">Kafka consumer · needs a running cluster, not live here</span>
+from kafka import KafkaConsumer
+import json
+
+consumer = KafkaConsumer(
+    "daybreak.events",
+    bootstrap_servers="kafka:9092",
+    group_id="events-aggregator",
+    auto_offset_reset="earliest",   # start from the beginning of the log
+    value_deserializer=lambda m: json.loads(m),
+)
+
+for message in consumer:   # unbounded - loops forever as events arrive
+    event = message.value
+    handle(event)          # your per-event or micro-batch logic
+        </div>
+        <p>And Kinesis, AWS's managed log, reading one shard's records - same shape, managed service:</p>
+        <div class="prompt-box">
+          <span class="label">Kinesis · needs AWS + a live stream, not here</span>
+import boto3
+
+kinesis = boto3.client("kinesis")
+it = kinesis.get_shard_iterator(
+    StreamName="daybreak-events",
+    ShardId="shardId-000000000000",
+    ShardIteratorType="LATEST",
+)["ShardIterator"]
+
+records = kinesis.get_records(ShardIterator=it, Limit=100)["Records"]
+# each record is one event off the stream; process, then advance the iterator
+        </div>
+        <div class="callout tip">
+          <strong>Where the lines fall</strong>
+          Kafka / Kinesis = the log (holds events). Flink / Spark Streaming = the processor (reads + transforms). Debezium = CDC (turns a DB's changes into log events). Scheduling, deploying, and monitoring all of it = the <a href="https://phoebefu6.github.io/learn-dataops-with-phoebe/">learn-dataops</a> course. This session is the mental model, not the ops.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Micro-batch a stream, window by window <span class="tag demo">★ 11 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Treat Daybreak's <code>events</code> as an arriving event stream. Process one window, then "advance the offset" to the next window in a second query - the exact rhythm a streaming job runs, expressed on batch tools you already know.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Window 1:</strong> process the events in the first window (early March) and aggregate by type.</p></div>
+      <div class="step"><p><strong>Advance the offset:</strong> the second query moves to the next window (mid/late March) - the consumer has moved forward on the log.</p></div>
+      <div class="step"><p><strong>Read the rhythm:</strong> each window is one micro-batch; a real job just loops this on a timer.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="Two windows over the same log. The second is the &quot;next offset&quot; - the last statement renders, so you see window 2.">
+      <pre class="sql-src">-- WINDOW 1 (offset: 01-07 Mar) - the first micro-batch
+CREATE OR REPLACE TABLE window_1 AS
+SELECT '2026-03-01..07' AS window, event_type, count(*) AS n
+FROM events
+WHERE CAST(event_date AS DATE) BETWEEN DATE '2026-03-01' AND DATE '2026-03-07'
+GROUP BY event_type;
+
+-- ADVANCE THE OFFSET: WINDOW 2 (08 Mar onward) - the next micro-batch
+CREATE OR REPLACE TABLE window_2 AS
+SELECT '2026-03-08..31' AS window, event_type, count(*) AS n
+FROM events
+WHERE CAST(event_date AS DATE) BETWEEN DATE '2026-03-08' AND DATE '2026-03-31'
+GROUP BY event_type;
+
+-- what the consumer produced after advancing to window 2
+SELECT * FROM window_2 ORDER BY n DESC;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>This is genuinely how micro-batch streaming works.</strong> Spark Structured Streaming, under the hood, runs your query over successive micro-batches and tracks the offset for you so no window is missed or repeated. You just built that loop by hand. The production tool automates the timer and the offset bookkeeping; the per-window logic is exactly what you wrote.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Your turn: re-window and enrich the stream <span class="tag demo">★ 10 min · build your own</span></h2>
+    </div>
+    <p class="lede">Q1 changes the window size. Q2 joins the stream to a dimension to see <em>who</em> is active. Q3 is the decision test: streaming, micro-batch, or plain batch?</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q1 · Window the events by week instead<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-caption="Hint: strftime(date, '%Y-W%W') buckets each event into its ISO-style week - windows of a week each.">
+          <pre class="sql-src">SELECT strftime(CAST(event_date AS DATE), '%Y-W%W') AS week,
+       count(*) AS events_in_week
+FROM events
+GROUP BY week
+ORDER BY week;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q2 · Join the stream to customers - who is active?<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-caption="Hint: enriching a raw event stream with a dimension is a standard streaming move - events carry only IDs.">
+          <pre class="sql-src">SELECT c.name, c.plan,
+       count(*) AS events_in_window
+FROM events e
+JOIN customers c ON e.customer_id = c.customer_id
+WHERE CAST(e.event_date AS DATE)
+      BETWEEN DATE '2026-03-01' AND DATE '2026-03-31'
+GROUP BY c.name, c.plan
+ORDER BY events_in_window DESC;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Q3 · Streaming, micro-batch, or batch?<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>No SQL - use the one test that cuts through the hype. Ask: <strong>does lower latency change a decision or an action?</strong> If a fraud check must block a transaction in the next 200 milliseconds, or an alert must fire the instant a sensor spikes, you need true <strong>streaming</strong> - the latency is the product. If freshness of a few minutes is plenty (a live dashboard, near-real-time metrics), use <strong>micro-batch</strong> - almost all the benefit, a fraction of the operational cost. If nobody acts on the data until tomorrow anyway (a daily report, a monthly finance close), stay on <strong>batch</strong> - streaming would be complexity nobody uses. The honest default: batch unless someone can name a decision that a few minutes of delay would ruin, then micro-batch, and reserve true streaming for when milliseconds genuinely matter.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Take Demo 1 and add a third window (April), then union all three so you see the whole "stream" processed window by window.</li>
+      <li>Rewrite Q2 to show only <code>login</code> events per customer - the enrichment pattern is how raw event IDs become readable activity.</li>
+      <li>Name one data flow at work. Is it batch, micro-batch, or streaming today? Run Q3's test on it: what decision would a few minutes of latency actually change?</li>
+      <li>Find one place someone re-queries a whole table on a schedule. Could CDC stream just the changes instead? Sketch what the source's change log would emit.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the streaming and CDC core of the DeepLearning.AI Data Engineering Professional Certificate (Joe Reis) and Reis &amp; Housley's <em>Fundamentals of Data Engineering</em>, run on a live engine instead of slides. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Source Systems, Ingestion &amp; Pipelines - M2: streaming ingestion, Kinesis</span><span class="note">Parts 1-3 · the streaming model, CDC, and the log/processor tools</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DLAI Introduction to Data Engineering - M3: streaming architecture</span><span class="note">Part 1 · batch vs streaming architecture, where each clock fits</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DLAI Data Storage &amp; Queries - M3: streaming queries</span><span class="note">Parts 2-3 · windowed processing on the query side</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What does Change Data Capture (CDC) capture?</p>
+      <button class="qopt" type="button">A · A nightly full copy of every source table</button>
+      <button class="qopt" type="button">B · Inserts, updates, and deletes from a source database's log, as a stream of change events</button>
+      <button class="qopt" type="button">C · Only the schema of the source database</button>
+      <p class="qwhy">CDC reads the source database's own transaction log and emits each insert, update, and delete as an event - streaming just the changed rows instead of re-querying the whole table. It is how near-real-time replication is done without hammering the source.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · What is a micro-batch?</p>
+      <button class="qopt" type="button">A · Small, frequent batches over a moving window - near-real-time freshness with batch simplicity</button>
+      <button class="qopt" type="button">B · A batch that runs only once a year</button>
+      <button class="qopt" type="button">C · A single event processed the instant it arrives, with no window</button>
+      <p class="qwhy">A micro-batch processes small, frequent windows of the stream (every few seconds or minutes) rather than one event at a time. It is what most production "streaming" actually is - most of the freshness, a fraction of the operational cost of true per-event streaming.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">3 · When do you actually need true streaming over batch or micro-batch?</p>
+      <button class="qopt" type="button">A · Whenever the data is large</button>
+      <button class="qopt" type="button">B · Whenever the source is a database</button>
+      <button class="qopt" type="button">C · When lower latency changes a decision or action - e.g. a fraud block in milliseconds</button>
+      <p class="qwhy">The test is whether latency changes a decision. Milliseconds mattering (fraud, live alerts) needs streaming; a few minutes being fine points to micro-batch; nobody acting until tomorrow means plain batch. Default to the simplest clock the decision allows.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 6 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Stream</b><span>Unbounded log of records arriving continuously. Consumers read at their own offset. Never "done."</span></div>
+      <div class="cheat-item"><b>Batch vs streaming</b><span>Batch = bounded chunk on a schedule. Streaming = per-event off the log. Two clocks.</span></div>
+      <div class="cheat-item"><b>Offset</b><span>The consumer's bookmark - how far it has read the log. Lets it resume after a restart.</span></div>
+      <div class="cheat-item"><b>CDC</b><span>Captures inserts/updates/deletes from a source DB's log as a stream. Beats re-querying the whole table.</span></div>
+      <div class="cheat-item"><b>Micro-batch</b><span>Small frequent batches over a moving window. What most real "streaming" is - simple + fresh enough.</span></div>
+      <div class="cheat-item"><b>Delivery</b><span>At-least-once (may duplicate → need idempotency) vs exactly-once (stronger, costlier).</span></div>
+      <div class="cheat-item"><b>Tools</b><span>Log: Kafka, Kinesis. Processor: Flink, Spark Streaming. CDC: Debezium. None run in a browser.</span></div>
+      <div class="cheat-item"><b>The decision test</b><span>Does lower latency change a decision? Milliseconds → streaming. Minutes fine → micro-batch. Else batch.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 6 of 10 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b5-batch-transformation.html">← Prev: Batch transformation</a> &nbsp;·&nbsp; <a href="b7-storage-engineering.html">Next: Storage engineering →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/de-seed.js?v=1"></script>
+<script src="../assets/de-live.js?v=2"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

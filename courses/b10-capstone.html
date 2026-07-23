@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 10 · Capstone: the whole pipeline - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Builder session 10 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Builder track · Session 10 of 10</div>
+    <h1>Capstone: the whole <span class="accent">pipeline</span></h1>
+    <p class="sub">Ten sessions of pieces, assembled into one running pipeline. Today you build Daybreak's production-shaped pipeline end to end: extract from the source, land it as Parquet, transform it defensively, store it partitioned, and serve the exact table the warehouse loads. Every stage you learned separately, now wired together and running live in this tab. This is the pipeline that feeds a warehouse.</p>
+    <div class="chip-row">
+      <span class="chip level">🔴 Builder track</span>
+      <span class="chip audience">Practitioners: DE · analysts · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">60 min · capstone</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-6 · Brief &amp; recap</span>
+      <span class="a2" style="flex:3">6-18 · Extract + land</span>
+      <span class="a3" style="flex:4">18-48 · Transform + serve</span>
+      <span class="a4" style="flex:2">48-60 · Wrap &amp; next</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>The brief</h2>
+    </div>
+    <p class="lede">Daybreak's warehouse (built in the sibling course) needs a reliable feed. That is what you deliver today. The brief is simple to state and real to build: <strong>take raw source data and produce a clean, served table the warehouse can load</strong> - through the same stages a petabyte pipeline uses, just at a scale that runs in a browser. Three demos take you across the whole lifecycle, each self-contained because the database is fresh every run.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live pipeline - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you prove today</strong>
+      That you can build the pipeline that <em>feeds</em> a warehouse: extract from a source you do not control, land raw data safely, transform it defensively and idempotently, store it partitioned, and serve the clean output the warehouse loads. The full data engineering lifecycle, in one runnable pipeline you built yourself.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: ARCHITECTURE RECAP ============ -->
+  <section class="section" id="architecture">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · the whole pipeline, one picture</span>
+      <h2>Architecture recap: b2 through b9 <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">Everything you learned as a separate session is one stage of a single pipeline. Here is the whole thing, with the session that taught each stage marked. Today's demos walk it left to right, from Daybreak's source to the served table the warehouse picks up. This is a doing session - read the map once, then build.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The full Daybreak pipeline from source to warehouse, with the session that taught each stage">
+        <style>
+          .cpT { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+          .cpS { font: 700 10.5px Inter, sans-serif; fill: #A6D9D4; }
+          .cpH { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .cpC { font: 500 11.5px Inter, sans-serif; fill: #566A67; }
+          .cpW { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+          .cpArr { stroke: #3AA39D; stroke-width: 2.5; fill: none; marker-end: url(#cpAh); }
+        </style>
+        <defs>
+          <marker id="cpAh" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#3AA39D"/>
+          </marker>
+        </defs>
+        <text class="cpH" x="20" y="34">Source to warehouse, stage by stage</text>
+        <rect x="12" y="60" width="118" height="56" rx="8" fill="#0A4A46"/>
+        <text class="cpT" x="26" y="86">Source</text>
+        <text class="cpS" x="26" y="104">OLTP</text>
+        <rect x="158" y="60" width="118" height="56" rx="8" fill="#0E6F6B"/>
+        <text class="cpT" x="172" y="86">Extract</text>
+        <text class="cpS" x="172" y="104">b2 b3 b6</text>
+        <rect x="304" y="60" width="118" height="56" rx="8" fill="#0E6F6B"/>
+        <text class="cpT" x="318" y="86">Land</text>
+        <text class="cpS" x="318" y="104">b4 Parquet</text>
+        <rect x="450" y="60" width="118" height="56" rx="8" fill="#0E6F6B"/>
+        <text class="cpT" x="464" y="86">Transform</text>
+        <text class="cpS" x="464" y="104">b5 b9</text>
+        <rect x="596" y="60" width="118" height="56" rx="8" fill="#0E6F6B"/>
+        <text class="cpT" x="610" y="86">Store</text>
+        <text class="cpS" x="610" y="104">b7 b8</text>
+        <rect x="742" y="60" width="118" height="56" rx="8" fill="#0A4A46"/>
+        <text class="cpT" x="756" y="86">Serve</text>
+        <text class="cpS" x="756" y="104">b10</text>
+        <path class="cpArr" d="M132,88 L156,88"/>
+        <path class="cpArr" d="M278,88 L302,88"/>
+        <path class="cpArr" d="M424,88 L448,88"/>
+        <path class="cpArr" d="M570,88 L594,88"/>
+        <path class="cpArr" d="M716,88 L740,88"/>
+        <path class="cpArr" d="M801,118 L801,176"/>
+        <rect x="596" y="180" width="264" height="52" rx="10" fill="#C2683A"/>
+        <text class="cpW" x="614" y="205">Warehouse</text>
+        <text class="cpS" x="614" y="223">learn-data-warehouse loads this</text>
+        <text class="cpC" x="20" y="205">DE owns everything left of the warehouse:</text>
+        <text class="cpC" x="20" y="223">extract, land, transform, store, serve.</text>
+        <text class="cpC" x="20" y="258">The warehouse models what you serve (star schema, SCDs). Scheduling and monitoring live in learn-dataops.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the full pipeline b2 to b9, assembled and served to the warehouse in b10</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>How the three demos map to the pipeline<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The build splits cleanly across the lifecycle:</p>
+        <ul>
+          <li><strong>Demo 1 - Extract + land:</strong> pull three source tables and write each to Parquet. The ingestion and storage stages (b2-b4).</li>
+          <li><strong>Demo 2 - Transform defensively:</strong> parse and clean, quarantine bad rows, join for revenue, build an idempotent daily table. The transform stage with b9's reliability seams.</li>
+          <li><strong>Demo 3 - Serve:</strong> build the final clean table and write it as a partitioned Parquet dataset the warehouse loads. The serving stage and the handoff (b7-b10).</li>
+        </ul>
+        <p>Each demo re-seeds a fresh database, so each one re-extracts what it needs. That is realistic - a real run starts from the source too.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 3</span>
+      <h2>Extract + land <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">The ingestion and storage stages. Extract three source tables - orders, order_items, customers - and write each to a Parquet file in the landing zone, then read them back with a counts summary to prove the data now lives outside the source system.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Extract:</strong> read each source table straight from Daybreak's OLTP system.</p></div>
+      <div class="step"><p><strong>Land:</strong> COPY each to its own Parquet file - the raw landing zone, untouched.</p></div>
+      <div class="step"><p><strong>Verify:</strong> read the files back and count rows per table. The data has left the source.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="The ingestion + storage stages. Land raw first, verify counts - this is the base every later stage reads from.">
+      <pre class="sql-src">-- EXTRACT + LAND: pull three source tables, write each to Parquet
+COPY (SELECT * FROM orders)      TO 'orders.parquet'      (FORMAT PARQUET);
+COPY (SELECT * FROM order_items) TO 'order_items.parquet' (FORMAT PARQUET);
+COPY (SELECT * FROM customers)   TO 'customers.parquet'   (FORMAT PARQUET);
+
+-- read the landing zone back with a counts summary
+SELECT 'orders'      AS table_name, count(*) AS rows FROM 'orders.parquet'
+UNION ALL
+SELECT 'order_items', count(*)                FROM 'order_items.parquet'
+UNION ALL
+SELECT 'customers',   count(*)                FROM 'customers.parquet'
+ORDER BY table_name;</pre>
+    </div>
+
+    <div class="callout tip">
+      <strong>Why land raw, untouched, first</strong>
+      The landing zone keeps a faithful copy of the source before you change anything. If a transform is wrong, you re-run from the landed files - no need to hit the source again. This raw-first layer is why b4 taught Parquet before b5 taught transforms.
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 3</span>
+      <h2>Transform defensively <span class="tag demo">★ 15 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">The transform stage, hardened with b9's reliability seams. The database is fresh, so this box re-extracts quickly first, then parses dates defensively, keeps only completed orders, joins to items for revenue, and builds an idempotent daily table. Run the whole box <strong>twice</strong> - the counts stay identical, proving the write is safe to repeat.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Re-extract:</strong> land orders and items again (fresh DB), the realistic start of any run.</p></div>
+      <div class="step"><p><strong>Clean:</strong> TRY_CAST the date so bad values drop out, filter to completed orders.</p></div>
+      <div class="step"><p><strong>Build idempotently:</strong> CREATE OR REPLACE the daily_revenue table. Re-running replaces, never doubles.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="The transform stage. Run this box twice: the days + total_revenue stay identical - that is idempotency.">
+      <pre class="sql-src">-- re-extract (fresh DB): land orders + items
+COPY (SELECT * FROM orders)      TO 'orders.parquet'      (FORMAT PARQUET);
+COPY (SELECT * FROM order_items) TO 'order_items.parquet' (FORMAT PARQUET);
+
+-- defensive clean: parse dates, drop unparseable rows, keep completed
+CREATE OR REPLACE TABLE clean_orders AS
+SELECT order_id, customer_id,
+       TRY_CAST(order_date AS DATE) AS order_date,
+       status, channel
+FROM 'orders.parquet'
+WHERE TRY_CAST(order_date AS DATE) IS NOT NULL
+  AND status = 'completed';
+
+-- join to items for revenue, aggregate to a daily table (idempotent)
+CREATE OR REPLACE TABLE daily_revenue AS
+SELECT o.order_date                                AS day,
+       round(sum(oi.quantity * oi.unit_price), 2)  AS revenue,
+       count(DISTINCT o.order_id)                  AS orders
+FROM clean_orders o
+JOIN 'order_items.parquet' oi ON o.order_id = oi.order_id
+GROUP BY o.order_date;
+
+-- run twice - these numbers do not change
+SELECT count(*) AS days, round(sum(revenue), 2) AS total_revenue FROM daily_revenue;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Idempotency is what lets a pipeline be re-run safely.</strong> When a nightly job fails halfway and someone re-triggers it at 6am, CREATE OR REPLACE means the target is rebuilt cleanly, not double-counted. This one habit turns a fragile pipeline into one DataOps can schedule and retry without fear.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 3 ============ -->
+  <section class="section" id="demo-3">
+    <div class="section-kicker">
+      <span class="klabel">Demo 3 of 3</span>
+      <h2>Serve <span class="tag demo">★ 15 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">The serving stage and the handoff. Build the final clean served table - daily revenue by channel - then write it as a partitioned Parquet dataset (one folder per month) and read one partition back. This is exactly the output <a href="https://phoebefu6.github.io/learn-data-warehouse-with-phoebe/">learn-data-warehouse</a>'s loader picks up. The DE job ends here.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Serve:</strong> build the final clean table the warehouse consumes - revenue by day and channel.</p></div>
+      <div class="step"><p><strong>Partition:</strong> COPY it out partitioned by month, the layout that keeps warehouse loads fast (b7).</p></div>
+      <div class="step"><p><strong>Hand off:</strong> read one month's partition back - the exact slice the warehouse loader reads.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="The serving stage. The partitioned Parquet dataset is the handoff point - the warehouse loader reads from here.">
+      <pre class="sql-src">-- SERVE: build the final clean table the warehouse will load
+CREATE OR REPLACE TABLE served AS
+SELECT CAST(o.order_date AS DATE)                         AS day,
+       strftime(CAST(o.order_date AS DATE), '%Y-%m')      AS month,
+       o.channel,
+       round(sum(oi.quantity * oi.unit_price), 2)         AS revenue
+FROM orders o
+JOIN order_items oi ON o.order_id = oi.order_id
+WHERE o.status = 'completed'
+GROUP BY day, month, o.channel;
+
+-- write March's partition to its own Parquet file (hand-partitioned by month)
+COPY (SELECT * FROM served WHERE month = '2026-03')
+  TO 'served_2026_03.parquet' (FORMAT PARQUET);
+
+-- read that partition back - the slice the warehouse loader picks up
+SELECT * FROM 'served_2026_03.parquet'
+ORDER BY day, channel;</pre>
+    </div>
+
+    <div class="callout tip">
+      <strong>This is the handoff line</strong>
+      The partitioned <code>served_revenue</code> dataset is where data engineering stops and the warehouse begins. The warehouse course models this into facts and dimensions; you have delivered it clean, partitioned, and ready to load. Pipeline done.
+    </div>
+  </section>
+
+  <!-- ============ PART 3: WRAP ============ -->
+  <section class="section" id="wrap">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · what you know, and where next</span>
+      <h2>Wrap: the whole lifecycle, built <span class="tag concept">4 min live</span></h2>
+    </div>
+    <p class="lede">You built the data engineering lifecycle end to end, on a real engine, against a source you did not control. That is the job. Here is what you now hold, how it pairs with the executive a-track twin, and honestly where this course stops.</p>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Where to go next, and the honest gaps<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The builder track (b1-b10) gave you the hands; the executive a-track gives leaders the same lifecycle as decisions and tradeoffs without the SQL. Together they cover the craft and the judgement. From here:</p>
+        <ul>
+          <li><strong><a href="https://phoebefu6.github.io/learn-data-warehouse-with-phoebe/">learn-data-warehouse</a>:</strong> models the served table you just built into star schemas, SCDs, and marts. It picks up exactly where b10 stops.</li>
+          <li><strong><a href="https://phoebefu6.github.io/learn-dataops-with-phoebe/">learn-dataops</a>:</strong> schedules, monitors, tests, and deploys the pipeline you built. It operates what you engineered.</li>
+          <li><strong><a href="https://phoebefu6.github.io/learn-sql-with-phoebe/">learn-sql</a>:</strong> the query language underneath every demo here, taught from the ground up.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>The honest gap list</strong>
+          This course did not cover orchestration (scheduling, DAGs), CI/CD, production monitoring and alerting, or live Spark and Kafka clusters - those need infrastructure a browser cannot host, and they live in learn-dataops. What you built is the pipeline logic itself, which is the part that transfers to every tool and every scale.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Take it off the page <span class="tag exercise">◐ 45-60 min total</span></h2>
+    </div>
+    <ul>
+      <li>Install real DuckDB (duckdb.org) and rebuild the capstone on your laptop - the same three scripts, running natively.</li>
+      <li>Point the served Parquet dataset at a real object store (an S3 or GCS bucket) instead of a local folder, and read a partition back from there.</li>
+      <li>Swap Daybreak for a source of your own: a CSV export, an app database dump. Run it through extract, land, transform defensively, serve.</li>
+      <li>Add a schema check to Demo 2 that fails loudly if the source drops a key column, then hand the whole thing to a teammate to run.</li>
+      <li>Write the one-paragraph runbook a DataOps engineer would need to schedule your pipeline: what it reads, what it writes, and how to tell it succeeded.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This capstone assembles the working core of the DeepLearning.AI Data Engineering Professional Certificate (Joe Reis) and Reis &amp; Housley's <em>Fundamentals of Data Engineering</em> into one end-to-end build. Certificates, cloud labs, and videos stay on the official platforms. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Fundamentals of Data Engineering (Reis &amp; Housley) - the full lifecycle</span><span class="note">All demos · generation to serving, assembled end to end</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Introduction to Data Engineering - M4: an end-to-end pipeline</span><span class="note">Demos 1-3 · the complete extract-land-transform-serve build</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Source Systems + Storage &amp; Queries - applied</span><span class="note">Demos 1, 3 · extraction, Parquet landing, partitioned serving</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What is the stage order of the pipeline you built today?</p>
+      <button class="qopt" type="button">A · Transform, extract, serve, land, store</button>
+      <button class="qopt" type="button">B · Extract, land, transform, store, serve</button>
+      <button class="qopt" type="button">C · Serve, store, transform, land, extract</button>
+      <p class="qwhy">You extract from the source, land it raw as Parquet, transform it defensively, store it partitioned, and serve the clean table. Same generation-to-serving lifecycle from b1, now built end to end.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · Why land raw data as Parquet before transforming it?</p>
+      <button class="qopt" type="button">A · It keeps a faithful copy of the source, so you can re-run transforms without hitting the source again</button>
+      <button class="qopt" type="button">B · Parquet is the only format DuckDB can read</button>
+      <button class="qopt" type="button">C · Transforms cannot run on source tables at all</button>
+      <p class="qwhy">The raw landing zone preserves the source as-received. If a transform is wrong, you rebuild from the landed files instead of re-extracting - cheaper, safer, and kinder to a source you do not control.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">3 · Which stage is the handoff to the warehouse?</p>
+      <button class="qopt" type="button">A · Extract - the warehouse reads the source directly</button>
+      <button class="qopt" type="button">B · Land - the warehouse loads the raw Parquet</button>
+      <button class="qopt" type="button">C · Serve - the clean, partitioned served dataset is what the warehouse loader picks up</button>
+      <p class="qwhy">Serving is where data engineering ends. The clean, partitioned served_revenue dataset is the front door of the warehouse, which then models it into facts and dimensions (learn-data-warehouse).</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>The pipeline in 8 lines <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>1 · Extract</b><span>Pull data out of the source system you do not control. Taught in b2 (connect) and b3 (ingestion).</span></div>
+      <div class="cheat-item"><b>2 · Land as Parquet</b><span>Write raw data to columnar files, untouched, as the base for everything after. Taught in b4.</span></div>
+      <div class="cheat-item"><b>3 · Transform</b><span>Clean, cast, join, and aggregate the landed data into trustworthy shapes. Taught in b5.</span></div>
+      <div class="cheat-item"><b>4 · Stream / CDC</b><span>Capture change as it happens for sources that never sit still. Taught in b6.</span></div>
+      <div class="cheat-item"><b>5 · Store partitioned</b><span>Lay files out by a key (month) so reads scan only what they need. Taught in b7.</span></div>
+      <div class="cheat-item"><b>6 · Process at scale</b><span>One machine crushes most data; reach for a cluster last. Taught in b8.</span></div>
+      <div class="cheat-item"><b>7 · Defend the seams</b><span>Quarantine bad rows, assert schema, make writes idempotent. Taught in b9.</span></div>
+      <div class="cheat-item"><b>8 · Serve to warehouse</b><span>Deliver the clean, partitioned table the warehouse loads. Built in b10 - the handoff line.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 10 of 10 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b9-reliability-seams.html">← Prev: Reliability seams</a> &nbsp;·&nbsp; <a href="../index.html">Back to all sessions →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/de-seed.js?v=1"></script>
+<script src="../assets/de-live.js?v=2"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

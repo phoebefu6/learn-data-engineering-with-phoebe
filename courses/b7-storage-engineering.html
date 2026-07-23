@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 7 · Storage engineering - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Builder session 7 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Builder track · Session 7 of 10</div>
+    <h1><span class="accent">Storage</span> engineering</h1>
+    <p class="sub">A pipeline that lands correct data can still be slow and expensive if the data is laid out badly on disk. Storage engineering is the craft of physical layout: how you partition data so queries skip what they do not need, how you tier it by cost, and why the modern stack stores everything on cheap object storage with compute kept separate. You will partition 300,000 Daybreak orders live and watch a query prune - on DuckDB in your browser.</p>
+    <div class="chip-row">
+      <span class="chip level">🔴 Builder track</span>
+      <span class="chip audience">Practitioners: DE · analysts · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-20 · Partitioning, tiers, object storage</span>
+      <span class="a3" style="flex:5">20-42 · Partition and prune, live</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where the pipeline stands</h2>
+    </div>
+    <p class="lede">Daybreak's pipeline now extracts (b2), ingests incrementally (b3), lands in good formats (b4), transforms in the engine (b5), and can even handle a stream (b6). The data is correct and well-shaped. This session asks a different question: <strong>how is it physically laid out on storage?</strong> Get that wrong and every query pays for it - scanning terabytes it did not need, on storage that costs more than it should. Storage engineering is the physical-layout craft that makes correct data also <em>fast</em> and <em>cheap</em>.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live pipeline - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A working feel for partitioning - splitting data by a column so queries skip irrelevant files - proven live by writing 300k Daybreak orders to monthly partitions and watching a query touch one month instead of all of them; the hot/warm/cold tiering model that trades latency for cost; why the modern stack sits on object storage (S3) with compute separate; and the over-partitioning trap that turns the cure into the disease.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: PARTITIONING CONCEPT ============ -->
+  <section class="section" id="partition">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI Storage &amp; Queries M1 (physical storage)</span>
+      <h2>Physical layout: partition so queries skip <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">The single biggest physical-layout decision is <strong>partitioning</strong>: splitting a dataset into separate files by the value of a column - most often a date. Then a query filtered to one month only opens that month's files and skips the rest. This is <em>partition pruning</em>, and it is the difference between scanning all your data and scanning a sliver of it. The art is picking a partition column that matches how queries actually filter.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Unpartitioned full scan versus partitioned pruning">
+        <style>
+          .pnT { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+          .pnH { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .pnC { font: 400 11px Inter, sans-serif; fill: #566A67; }
+          .pnN { font: 600 12px Inter, sans-serif; fill: #3A1C0C; }
+          .pnArr { stroke: #3AA39D; stroke-width: 2.5; fill: none; marker-end: url(#pnAh); }
+        </style>
+        <defs>
+          <marker id="pnAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#3AA39D"/>
+          </marker>
+        </defs>
+
+        <text class="pnH" x="26" y="30">Unpartitioned - one query reads ALL the data</text>
+        <rect x="26" y="44" width="360" height="54" rx="8" fill="#C2683A"/>
+        <text class="pnT" x="42" y="76">one big file - every query scans the whole thing</text>
+        <text class="pnC" x="26" y="120">Filter to March? The engine still reads Jan..Dec to find it.</text>
+
+        <text class="pnH" x="26" y="168">Partitioned by month - the query prunes to one</text>
+        <rect x="26"  y="182" width="74" height="44" rx="6" fill="#E8F4F3" stroke="#A6D9D4"/><text class="pnC" x="42" y="209">Jan</text>
+        <rect x="108" y="182" width="74" height="44" rx="6" fill="#E8F4F3" stroke="#A6D9D4"/><text class="pnC" x="124" y="209">Feb</text>
+        <rect x="190" y="182" width="74" height="44" rx="6" fill="#0E6F6B"/><text class="pnT" x="206" y="209">Mar</text>
+        <rect x="272" y="182" width="74" height="44" rx="6" fill="#E8F4F3" stroke="#A6D9D4"/><text class="pnC" x="288" y="209">Apr</text>
+        <rect x="354" y="182" width="74" height="44" rx="6" fill="#E8F4F3" stroke="#A6D9D4"/><text class="pnC" x="370" y="209">May</text>
+        <rect x="436" y="182" width="74" height="44" rx="6" fill="#E8F4F3" stroke="#A6D9D4"/><text class="pnC" x="452" y="209">Jun</text>
+        <path class="pnArr" d="M227,150 L227,180"/>
+        <text class="pnN" x="250" y="170">query for March opens only the Mar file</text>
+        <text class="pnC" x="26" y="256">Same data, laid out so the engine reads 1 file, not 6. That is partition pruning.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - one big file reads everything; partitions let the query skip most of it</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Partitioning, and the two ways to get it wrong<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Partitioning writes each group of rows to its own file (or folder of files) keyed by a column. A query that filters on that column reads only the matching partitions - it <em>prunes</em> the rest. Pick the column queries filter on most, and pick a granularity that keeps partitions a sensible size.</p>
+        <ul>
+          <li><strong>One big file is bad:</strong> every query, however selective, must scan the whole thing. No pruning is possible - the engine cannot skip what is not separated.</li>
+          <li><strong>A million tiny files is worse:</strong> over-partition (say, by the second) and you drown in file overhead - each file has a cost to open and read metadata for. The engine spends more time managing files than reading data.</li>
+          <li><strong>The sweet spot:</strong> partitions large enough to be worth opening, small enough that a typical query skips most of them. Date partitions (day or month) hit this for most time-series data.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Partitioning is often the single cheapest speedup.</strong> A team's dashboard query scanned a whole year of event data every load - slow and, on a pay-per-scan warehouse, expensive. Partitioning the table by day meant the "last 7 days" dashboard read seven partitions instead of 365. No new hardware, no rewrite of the query - just laying the same bytes out to match how they were queried. Cost and latency both dropped by more than an order of magnitude.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>File layout: not too few, not too many<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Beyond which column, file <em>layout</em> matters. Columnar formats like Parquet (b4) store row groups you can skip within a file; partitioning skips whole files between them. The two compound. The failure modes are symmetric: too few files (one giant blob) means no skipping at all; too many files (the "small files problem") means the engine pays per-file overhead that swamps the read. Healthy targets are partitions in the tens-to-hundreds-of-megabytes range - big enough to amortize opening, small enough to prune usefully. Compaction jobs exist precisely to merge small files back up when a streaming or frequent-append pipeline has fragmented a table.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: PARTITIONING HANDS-ON ============ -->
+  <section class="section" id="handson">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · partitioning on real scale</span>
+      <h2>Partition 300k orders, then query one <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">This playground loads <code>big_orders</code> - 300,000 synthetic Daybreak orders, generated in-browser, nothing shipped over a network. You will write them out partitioned by a derived month, then read a single month back and see that only that partition's rows are touched. This is partition pruning on data big enough to feel it.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Write partitioned, then read one partition<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Partitioning means splitting a table into separate files by a column, so a query that filters on that column reads only the files it needs. The simplest form is one file per partition: write each month to its own Parquet file, then a month-query reads just that one file. Press <strong>▶ Run</strong> - note the row count is one month's slice, not all 300k.</p>
+        <div class="sqlbox" data-setup="big" data-caption="Write ONE month to its own file, then read only that file. The other months are never scanned.">
+          <pre class="sql-src">-- hand-partition: write January's slice to its own file
+COPY (
+  SELECT * FROM big_orders
+  WHERE strftime(order_date, '%Y-%m') = '2026-01'
+) TO 'orders_2026_01.parquet' (FORMAT PARQUET);
+
+-- read ONE partition file - only January's rows are scanned
+SELECT count(*)                           AS rows_scanned,
+       ROUND(avg(quantity * unit_price),2) AS avg_line_value
+FROM 'orders_2026_01.parquet';</pre>
+        </div>
+        <div class="callout tip">
+          <strong>What the big engines automate</strong>
+          Snowflake and BigQuery let you declare a partition column and they manage the file-per-partition split for you (and go finer with micro-partitions and clustering). The mechanic is exactly what you just did by hand: filter on the partition column, touch only the matching files.
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Storage tiers: hot, warm, cold<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Not all data deserves the same storage. Tiering trades latency for cost:</p>
+        <ul>
+          <li><strong>Hot:</strong> queried constantly, must be instant. Kept on the fastest, most expensive storage (SSD-backed, standard object storage). Daybreak's last-90-days orders.</li>
+          <li><strong>Warm:</strong> queried occasionally. Cheaper storage, slightly slower retrieval. Last year's orders you still report on monthly.</li>
+          <li><strong>Cold:</strong> rarely touched, kept for compliance or the odd deep dive. Cheapest storage (S3 Glacier and the like), retrieval measured in minutes to hours. Daybreak's five-year-old records.</li>
+        </ul>
+        <p>The base of all three is <strong>object storage</strong> (Amazon S3, GCS, Azure Blob) - cheap, effectively infinite, and where lifecycle rules automatically move data hot → warm → cold as it ages. You engineer the tiering; the cloud enforces it.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: OBJECT STORAGE ============ -->
+  <section class="section" id="object">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers DLAI Storage &amp; Queries M1 (distributed, object storage)</span>
+      <h2>Object storage and separated compute <span class="tag concept">4 min live</span></h2>
+    </div>
+    <p class="lede">The modern stack made one decisive move: store data on cheap <strong>object storage</strong> and keep <strong>compute separate</strong>, spinning it up only when you query. This is why a Parquet file on your laptop (b4) and a Parquet object in S3 are the same thing - the engine reads either the same way. Storage scales independently of compute, so you pay for a petabyte of storage without paying for a petabyte of always-on compute.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Object storage as the base with compute engines attached on demand">
+        <style>
+          .osT { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+          .osH { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .osC { font: 400 11px Inter, sans-serif; fill: #566A67; }
+          .osN { font: 600 12px Inter, sans-serif; fill: #3A1C0C; }
+          .osArr { stroke: #3AA39D; stroke-width: 2.5; fill: none; }
+        </style>
+        <text class="osH" x="26" y="30">Compute engines - spun up on demand, paid per query</text>
+        <rect x="26"  y="44" width="150" height="46" rx="8" fill="#0E6F6B"/><text class="osT" x="42" y="72">DuckDB</text>
+        <rect x="206" y="44" width="150" height="46" rx="8" fill="#0E6F6B"/><text class="osT" x="222" y="72">Spark</text>
+        <rect x="386" y="44" width="180" height="46" rx="8" fill="#0E6F6B"/><text class="osT" x="402" y="72">Snowflake</text>
+        <rect x="596" y="44" width="220" height="46" rx="8" fill="#0A4A46"/><text class="osT" x="612" y="72">your laptop, reading a file</text>
+
+        <line class="osArr" x1="101" y1="90" x2="101" y2="150"/>
+        <line class="osArr" x1="281" y1="90" x2="281" y2="150"/>
+        <line class="osArr" x1="476" y1="90" x2="476" y2="150"/>
+        <line class="osArr" x1="706" y1="90" x2="706" y2="150"/>
+
+        <text class="osN" x="330" y="140">all read the same files - storage is shared, compute is not</text>
+        <rect x="26" y="152" width="790" height="60" rx="10" fill="#FBEDE4" stroke="#C2683A"/>
+        <text class="osT" x="46" y="180" fill="#3A1C0C">Object storage (S3 / GCS / Azure Blob) - cheap, near-infinite, the shared base</text>
+        <text class="osC" x="46" y="200" fill="#3A1C0C">Parquet objects - the same format you wrote to your laptop in b4, now in the cloud</text>
+        <text class="osC" x="26" y="248">Storage scales independently of compute. Pay for the petabyte; rent the CPUs only when querying.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - many engines, one cheap shared storage base</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Distributed storage, in one idea (read-only)<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Behind an S3 bucket is a <strong>distributed file system</strong>: your "file" is split into pieces, replicated across many machines for durability, and addressed as one logical object. You never see the machines - you just read a path. That abstraction is what lets a single <code>SELECT ... FROM 's3://daybreak/orders/*.parquet'</code> transparently read data spread across a fleet. The read below is exactly what your playground does locally; only the path changes when it points at the cloud:</p>
+        <div class="prompt-box">
+          <span class="label">The same read, local vs cloud - path is the only difference</span>
+-- local (what the playground runs)
+SELECT count(*) FROM 'orders_by_month/month=2026-01/*.parquet';
+
+-- cloud object storage (a real deployment) - identical query shape
+SELECT count(*) FROM 's3://daybreak/orders_by_month/month=2026-01/*.parquet';
+        </div>
+        <div class="callout tip">
+          <strong>Why this matters for you</strong>
+          The partitioning you just did on a local folder is byte-for-byte the layout you would push to S3. Learn the physical layout on your laptop; the cloud deployment is the same idea with a longer path - and object storage is the base every modern warehouse and lake sits on.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Partition, then prove the prune with a timer <span class="tag demo">★ 11 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Write the 300k orders partitioned by month, then run two reads back to back: one hitting a single month, one scanning every partition. Compare the "ms in your browser" figures - the pruned query touches a fraction of the data.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Write:</strong> partition <code>big_orders</code> into one folder per month.</p></div>
+      <div class="step"><p><strong>Prune:</strong> read a single month - the engine opens just that partition.</p></div>
+      <div class="step"><p><strong>Compare:</strong> read every partition and watch the row count (and time) jump - that is the scan you avoided.</p></div>
+    </div>
+
+    <div class="sqlbox" data-setup="big" data-caption="One month vs all months. The last statement renders the full scan - compare its row count and ms to a single month.">
+      <pre class="sql-src">-- hand-partition: write one month to its own file
+COPY (
+  SELECT * FROM big_orders
+  WHERE strftime(order_date, '%Y-%m') = '2026-01'
+) TO 'orders_2026_01.parquet' (FORMAT PARQUET);
+
+-- PRUNED read (one partition file) vs FULL scan (the whole table)
+SELECT (SELECT count(*) FROM 'orders_2026_01.parquet') AS pruned_read,
+       count(*)                                        AS full_scan_read
+FROM big_orders;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>The number you just saw is the whole point of storage engineering.</strong> On a pay-per-scan cloud warehouse, that pruned read is not just faster - it is cheaper by the same ratio, because you are billed for bytes scanned. Teams cut warehouse bills dramatically by nothing more than partitioning tables to match their query filters. The data did not change; its physical layout did.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Your turn: partition differently, count, and reflect <span class="tag demo">★ 10 min · build your own</span></h2>
+    </div>
+    <p class="lede">Q1 partitions by a different column. Q2 counts rows per partition to check the layout is balanced. Q3 is the trap every storage engineer must learn to avoid.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q1 · Partition by channel instead, then read one<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-setup="big" data-caption="Hint: write just the web slice to its own file, then read it - only web orders are scanned.">
+          <pre class="sql-src">COPY (SELECT * FROM big_orders WHERE channel = 'web')
+TO 'orders_web.parquet' (FORMAT PARQUET);
+
+SELECT count(*) AS web_orders
+FROM 'orders_web.parquet';</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q2 · Count rows per partition<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-setup="big" data-caption="Hint: GROUP BY the partition column to see how many rows each monthly file would hold - watch for skew.">
+          <pre class="sql-src">-- how many rows each monthly partition would hold
+SELECT strftime(order_date, '%Y-%m') AS month,
+       count(*)                       AS rows_in_partition
+FROM big_orders
+GROUP BY month
+ORDER BY month;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Q3 · The over-partitioning trap<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>No SQL - reason about the failure mode. Partitioning helps by letting queries skip files, so it is tempting to partition on everything: month <em>and</em> channel <em>and</em> customer <em>and</em> product. Do that and you shatter 300k rows into thousands of tiny files, each with a handful of rows. Now every query, even a pruned one, must open, read metadata for, and stitch together a huge number of files - and the per-file overhead swamps any saving from skipping. This is the <strong>small files problem</strong>, and at real scale it is a classic performance killer: a table "optimized" into millions of kilobyte files runs slower than the single blob it started as. The rule: partition on the one or two columns queries actually filter on, at a granularity that keeps each partition a healthy size (tens to hundreds of MB). More partitions is not more speed - past a point it is the opposite. When a streaming or frequent-append job has already fragmented a table, a compaction step merges the shards back up.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Take Demo 1 and partition <code>big_orders</code> by <code>status</code> instead of month. Read the <code>completed</code> partition and compare its row count to a full scan.</li>
+      <li>Run Q2 and look at the row counts per partition. Are they balanced, or is one month far larger? Unbalanced partitions hurt pruning - why?</li>
+      <li>Pick one large table you query at work. What column do your queries filter on most? That is almost certainly your partition key. Is the table partitioned on it today?</li>
+      <li>Map one dataset you own onto hot / warm / cold. What could move to cheaper storage without anyone noticing the latency?</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the physical-storage core of the DeepLearning.AI Data Engineering Professional Certificate (Joe Reis) and Reis &amp; Housley's <em>Fundamentals of Data Engineering</em>, run on a live engine instead of slides. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Data Storage &amp; Queries - M1: physical storage, distributed, tiers</span><span class="note">Parts 1-3 · partitioning, hot/warm/cold, object storage, separated compute</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Fundamentals of Data Engineering (Reis &amp; Housley) - storage</span><span class="note">Parts 1-3 · file layout, the small-files problem, storage abstractions</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What does partitioning a table by date save you?</p>
+      <button class="qopt" type="button">A · Storage space, by compressing the data more</button>
+      <button class="qopt" type="button">B · Scan work and cost - a query filtered to one date reads only that partition and skips the rest</button>
+      <button class="qopt" type="button">C · Nothing measurable; it is only for tidiness</button>
+      <p class="qwhy">Partitioning splits data into files by a column so a query filtered on that column prunes to the matching partitions and skips the rest. Less data scanned means faster queries and, on pay-per-scan warehouses, a directly lower bill.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · What is the difference between a hot and a cold storage tier?</p>
+      <button class="qopt" type="button">A · Hot is fast, frequently-queried, and pricier; cold is cheap, rarely-touched, and slow to retrieve</button>
+      <button class="qopt" type="button">B · Hot means the data is new; cold means the data is corrupted</button>
+      <button class="qopt" type="button">C · They are the same speed, only the file names differ</button>
+      <p class="qwhy">Tiers trade latency for cost. Hot data is on fast, expensive storage for instant access; cold data (e.g. S3 Glacier) is cheapest but takes minutes to hours to retrieve. You engineer the tiering; cloud lifecycle rules move data hot → warm → cold as it ages.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">3 · Why can over-partitioning hurt performance?</p>
+      <button class="qopt" type="button">A · It never hurts; more partitions are always faster</button>
+      <button class="qopt" type="button">B · It uses more disk space than one file</button>
+      <button class="qopt" type="button">C · It shatters data into millions of tiny files whose per-file overhead swamps the saving from skipping</button>
+      <p class="qwhy">Partitioning on too many columns or too fine a grain creates the "small files problem" - the engine spends more time opening and reading metadata for countless tiny files than it saves by pruning. Partition on the one or two columns queries filter on, at a healthy per-partition size.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 7 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Partitioning</b><span>Split data into files by a column (often date). Queries filtered on it prune - read only matching files.</span></div>
+      <div class="cheat-item"><b>Partition pruning</b><span>The payoff: a one-month query opens one month's files, skips the rest. Less scanned = faster + cheaper.</span></div>
+      <div class="cheat-item"><b>One big file</b><span>Bad: every query scans everything, no skipping possible.</span></div>
+      <div class="cheat-item"><b>A million tiny files</b><span>Worse: per-file overhead swamps the read. The small-files problem. Compaction merges them back.</span></div>
+      <div class="cheat-item"><b>Pick the key</b><span>Partition on the column queries filter on most, at a grain that keeps partitions tens-to-hundreds of MB.</span></div>
+      <div class="cheat-item"><b>Tiers</b><span>Hot (fast, pricey, frequent) · warm (occasional) · cold (cheap, slow, rare, e.g. Glacier). Latency vs cost.</span></div>
+      <div class="cheat-item"><b>Object storage</b><span>S3 / GCS / Blob - cheap, near-infinite base of the modern stack. Your laptop's Parquet file, in the cloud.</span></div>
+      <div class="cheat-item"><b>Separated compute</b><span>Storage scales apart from compute. Pay for the petabyte; rent CPUs only when you query.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 7 of 10 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b6-streaming-and-cdc.html">← Prev: Streaming and CDC</a> &nbsp;·&nbsp; <a href="b8-distributed-processing.html">Next: Distributed processing →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/de-seed.js?v=1"></script>
+<script src="../assets/de-live.js?v=2"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

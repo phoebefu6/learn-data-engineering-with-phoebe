@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 4 · Build vs buy the stack - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Leader session 4 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Leader track · Session 4 of 6</div>
+    <h1>Build vs <span class="accent">buy</span> the stack</h1>
+    <p class="sub">Every data platform decision eventually becomes a build-vs-buy call: license a tool, run open source, or write it yourself. Get it wrong and you either burn cash on shelfware or drown a team maintaining plumbing no customer ever sees. This session gives you the modern data stack in layers, the managed-vs-open-source tradeoff, and ten questions that separate a good tooling purchase from an expensive mistake.</p>
+    <div class="chip-row">
+      <span class="chip level">🔵 Leader track</span>
+      <span class="chip audience">Leaders: CxO · VPs · managers</span>
+      <span class="chip audience">No code - thinking mode</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:5">3-20 · The modern data stack</span>
+      <span class="a3" style="flex:7">20-42 · Managed vs OSS + vendor questions</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Why this decision lands on your desk</h2>
+    </div>
+    <p class="lede">You will not write the pipeline code. But you will approve the budget, sign the contract, and answer to finance when the data-tooling bill arrives. This session is about spending that money well: understanding what each layer of a modern data stack actually does, when to pay a vendor to run it, and when running open source or building your own is worth the headcount it costs. The goal is not to make you a buyer or a builder - it is to make you ask the right questions before either.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A layer-by-layer map of the modern data stack and which vendors play in each, a clear framework for managed vs open source vs build-your-own, Joe Reis's "avoid undifferentiated heavy lifting" rule, and ten questions to ask any data-tooling vendor before you sign.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE MODERN DATA STACK ============ -->
+  <section class="section" id="stack">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI Source Systems &amp; Ingestion M2, Fundamentals of DE</span>
+      <h2>The modern data stack, in layers <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">The phrase "modern data stack" sounds like one product. It is not - it is a handful of specialist layers, each with its own vendors, wired together. Ingestion tools copy data out of sources. Storage holds it cheaply. A transform layer reshapes it. Orchestration schedules the whole thing. Serving hands it to consumers. Knowing the layers tells you exactly what you are buying, and what you are not.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The modern data stack as layers with example tools, orchestration marked as the dataops course">
+        <style>
+          .stkT { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .stkS { font: 400 11.5px Inter, sans-serif; fill: #A6D9D4; }
+          .stkH { font: 700 13px Inter, sans-serif; fill: #14211F; }
+          .stkC { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .stkCS { font: 400 11px Inter, sans-serif; fill: #FBEDE4; }
+          .stkN { font: 600 12.5px Inter, sans-serif; fill: #3A1C0C; }
+          .stkArr { stroke: #3AA39D; stroke-width: 2.5; fill: none; marker-end: url(#stkAh); }
+        </style>
+        <defs>
+          <marker id="stkAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#3AA39D"/>
+          </marker>
+        </defs>
+        <text class="stkH" x="40" y="30">Four layers you buy - stage by stage</text>
+
+        <rect x="40" y="46" width="540" height="52" rx="8" fill="#0A4A46"/>
+        <text class="stkT" x="58" y="70">Ingestion / EL</text>
+        <text class="stkS" x="58" y="88">Fivetran · Airbyte · dlt</text>
+
+        <rect x="40" y="118" width="540" height="52" rx="8" fill="#0E6F6B"/>
+        <text class="stkT" x="58" y="142">Storage</text>
+        <text class="stkS" x="58" y="160">S3 object store · Snowflake · BigQuery</text>
+
+        <rect x="40" y="190" width="540" height="52" rx="8" fill="#0E6F6B"/>
+        <text class="stkT" x="58" y="214">Transform</text>
+        <text class="stkS" x="58" y="232">dbt · SQL in the warehouse</text>
+
+        <rect x="40" y="262" width="540" height="52" rx="8" fill="#0A4A46"/>
+        <text class="stkT" x="58" y="286">Serving</text>
+        <text class="stkS" x="58" y="304">BI dashboards · ML · AI apps</text>
+
+        <path class="stkArr" d="M310,98 L310,116"/>
+        <path class="stkArr" d="M310,170 L310,188"/>
+        <path class="stkArr" d="M310,242 L310,260"/>
+
+        <rect x="606" y="46" width="234" height="268" rx="8" fill="#C2683A"/>
+        <text class="stkC" x="624" y="76">Orchestration</text>
+        <text class="stkCS" x="624" y="98">Airflow · Dagster</text>
+        <text class="stkCS" x="624" y="128">schedules + wires</text>
+        <text class="stkCS" x="624" y="146">every layer above</text>
+        <text class="stkCS" x="624" y="182">This layer is the</text>
+        <text class="stkCS" x="624" y="200">learn-dataops</text>
+        <text class="stkCS" x="624" y="218">course, not this one</text>
+
+        <rect x="40" y="332" width="14" height="14" rx="3" fill="#C2683A"/>
+        <text class="stkN" x="64" y="344">The copper layer (orchestration) is owned by learn-dataops - we buy the layers it wires.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the modern data stack, one vendor category per layer</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What each layer actually buys you<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Each layer solves one problem, and you can buy, rent, or build each independently. That modularity is the whole point of the modern stack - you are not locked into one giant suite.</p>
+        <ul>
+          <li><strong>Ingestion / EL:</strong> Fivetran, Airbyte, and dlt copy data out of your sources on a schedule. This is the "get it here" layer - the fragile, unglamorous part most teams underestimate.</li>
+          <li><strong>Storage:</strong> cheap durable object storage (S3) plus a warehouse (Snowflake, BigQuery, Databricks, or DuckDB at small scale) where the data lives and gets queried.</li>
+          <li><strong>Transform:</strong> dbt has become the default here - it turns raw landed tables into clean, tested, documented ones, all in SQL.</li>
+          <li><strong>Serving:</strong> the layer your business actually sees - dashboards, models, AI features. Everything upstream exists to feed this.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why orchestration is a different course<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Orchestration (Airflow, Dagster) is the copper layer in the diagram: it schedules jobs, wires the layers together, retries failures, and pages someone at 2am. It is essential - but it is an operations discipline, not a data-engineering one, so it lives in the <a href="https://phoebefu6.github.io/learn-dataops-with-phoebe/">learn-dataops</a> course. In this course we choose and connect the ingestion, storage, transform, and serving layers. How you run them reliably in production is the DataOps job. Keeping that line clear stops your team from re-buying the same capability twice.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The stack is assembled, not bought whole<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>There is no single "modern data stack" product on a price list. Your team assembles it from best-of-breed pieces - and that is a feature, because it lets you swap one layer without ripping out the rest. The risk is integration: five vendors means five contracts, five bills, and five places a handoff can break. The strategic question is not "which stack" but "how many layers do we pay someone else to run, and how many do we own." That is exactly the build-vs-buy call in Part 2.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The stack that was really a spreadsheet.</strong> A mid-size retailer proudly listed a "modern data stack" in board slides. In reality one analyst hand-ran exports into a shared drive. The vendor logos were aspirational. Naming the layers honestly - which are bought, which are manual, which are missing - turned a vanity slide into a real roadmap.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: MANAGED VS OSS ============ -->
+  <section class="section" id="tradeoff">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers Fundamentals of DE (tooling philosophy)</span>
+      <h2>Managed vs open source vs build-your-own <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">For every layer, you have three ways to get it: pay a vendor to run it (managed / SaaS), run the open-source version yourself, or build it from scratch. Each wins in a different situation, and each has a failure mode. Joe Reis's rule cuts through it: <strong>avoid undifferentiated heavy lifting</strong> - buy the boring parts everyone needs, and build only the thing that is actually your edge.</p>
+
+    <table class="clean">
+      <thead><tr><th>Approach</th><th>When it wins</th><th>Watch out for</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Managed / SaaS</strong></td><td>you want speed, few engineers, predictable ops; the layer is not your differentiator</td><td>per-row or per-connector pricing that scales with success; data egress fees; lock-in</td></tr>
+        <tr><td><strong>Open source, self-run</strong></td><td>scale or cost makes SaaS painful; you need control or have a compliance reason</td><td>the "free" tool costs you salaries; upgrades, security, and uptime are now your job</td></tr>
+        <tr><td><strong>Build your own</strong></td><td>the capability truly is your competitive edge and nothing on the market fits</td><td>the maintenance tail - you own it forever, and it competes with vendor R&amp;D budgets</td></tr>
+      </tbody>
+    </table>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The "undifferentiated heavy lifting" rule<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Reis borrows the phrase from cloud economics: work that every company has to do but no customer will ever pay you extra for. Copying rows out of a database is undifferentiated - a thousand companies do it identically. Your pricing model, your recommendation logic, your proprietary metric - that is differentiated. The rule: <strong>rent the undifferentiated layers, spend your scarce engineers on the differentiated one.</strong></p>
+        <ul>
+          <li><strong>Ingestion is almost always undifferentiated:</strong> this is why Fivetran and Airbyte exist and thrive - buy it unless you have a genuinely unusual source.</li>
+          <li><strong>Your edge is usually in transform + serving:</strong> the business logic that makes your numbers <em>yours</em> is worth building and owning.</li>
+          <li><strong>Managed by default, OSS by justification:</strong> prefer managed until scale, cost, or control gives you a concrete reason to run it yourself.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Reading the true cost of "free"<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Open source has no license fee, which makes it look free on the invoice - and expensive on the payroll. Running Airbyte or Airflow yourself means engineers patching CVEs, chasing upgrades, and getting paged at night. Two senior engineers cost far more than most SaaS contracts. The honest comparison is total cost of ownership: license plus egress plus people plus opportunity cost of what those engineers could build instead. Sometimes OSS still wins - at large scale it often does - but only when you have done that full sum, not just noticed the price tag says zero.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The team that built its own ingestion tool.</strong> A well-funded startup decided commercial connectors were "too expensive" and wrote its own ingestion framework. Two years later, three of its best engineers spent most of their week maintaining connectors and firefighting source-API changes - work Fivetran does for a subscription. The build was cheaper on day one and far more expensive by year two. They eventually bought the managed tool and redeployed the team onto the product. The tell: they were maintaining plumbing, not shipping their edge.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: TEN VENDOR QUESTIONS ============ -->
+  <section class="section" id="questions">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · the buyer's checklist</span>
+      <h2>Ten questions for any data-tooling vendor <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">When a vendor pitches you, the demo always looks great. The cost and the pain show up later - in the egress bill, the pricing that scales with your growth, the migration you cannot afford. These ten questions surface the things vendors do not lead with. Ask them before you sign, not after.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A build-versus-buy decision ladder from managed SaaS down to build your own">
+        <style>
+          .ladT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .ladS { font: 400 11px Inter, sans-serif; fill: #FFFFFF; }
+          .ladH { font: 700 13px Inter, sans-serif; fill: #14211F; }
+          .ladQ { font: 600 12px Inter, sans-serif; fill: #566A67; }
+          .ladArr { stroke: #C2683A; stroke-width: 2.5; fill: none; marker-end: url(#ladAh); }
+        </style>
+        <defs>
+          <marker id="ladAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#C2683A"/>
+          </marker>
+        </defs>
+        <text class="ladH" x="40" y="28">Start at the top - only step down with a reason</text>
+
+        <rect x="40" y="44" width="360" height="46" rx="8" fill="#0A4A46"/>
+        <text class="ladT" x="58" y="66">1 · Buy managed / SaaS</text>
+        <text class="ladS" x="58" y="82">default - fastest, fewest people</text>
+
+        <rect x="80" y="108" width="360" height="46" rx="8" fill="#0E6F6B"/>
+        <text class="ladT" x="98" y="130">2 · Run open source yourself</text>
+        <text class="ladS" x="98" y="146">only if scale / cost / control demands</text>
+
+        <rect x="120" y="172" width="360" height="46" rx="8" fill="#3AA39D"/>
+        <text class="ladT" x="138" y="194">3 · Build your own</text>
+        <text class="ladS" x="138" y="210">only if it is genuinely your edge</text>
+
+        <path class="ladArr" d="M220,90 L220,106"/>
+        <path class="ladArr" d="M260,154 L260,170"/>
+
+        <text class="ladQ" x="510" y="66">Ask: does it fit our</text>
+        <text class="ladQ" x="510" y="84">existing warehouse?</text>
+        <text class="ladQ" x="510" y="128">Ask: egress + per-row</text>
+        <text class="ladQ" x="510" y="146">pricing at our scale?</text>
+        <text class="ladQ" x="510" y="192">Ask: who owns the</text>
+        <text class="ladQ" x="510" y="210">maintenance tail?</text>
+
+        <text class="ladH" x="40" y="262">The red flag: a vendor who cannot give a straight answer on exit and egress.</text>
+        <text class="ladQ" x="40" y="284">If leaving is hard or the data-transfer bill is a mystery, the lock-in is the product.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the build-vs-buy ladder: start managed, step down only with a reason</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The ten questions, grouped<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Group them by what they protect you from - cost surprises, lock-in, and fit.</p>
+        <ul>
+          <li><strong>Cost that scales against you:</strong> Is pricing per-row, per-connector, or per-seat? What is the data egress / transfer cost? What does the bill look like at 3x our current volume?</li>
+          <li><strong>Lock-in and exit:</strong> How do we leave - can we export everything, and in what format? Do we depend on a proprietary format? Who owns the data while it is in your system?</li>
+          <li><strong>Fit with what we have:</strong> Does it work with our existing warehouse? What does it not do that we will still need? What is the real setup effort in weeks?</li>
+          <li><strong>The tenth question:</strong> Show me a customer our size who left. If they cannot, ask why.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Red flags in the sales room<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A few answers should raise your guard immediately. "We do not publish egress pricing" often means it is where they make their margin. "Everyone stays, no one leaves" means either a great product or high switching costs by design - find out which. "You do not need your old warehouse anymore" is a bid to become your whole stack and your single point of failure. None of these are automatic dealbreakers, but each one is a signal to slow down, get it in writing, and model the three-year cost before you sign.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The egress bill that dwarfed the license.</strong> A company signed a cheap analytics tool, then discovered that moving query results back out - egress - cost more each month than the subscription itself. The pricing page was honest; nobody had asked the egress question. One line in a discovery call would have caught it.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Take this back to your team <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Draw your own stack as four layers (ingestion, storage, transform, serving) and label each as bought, self-run, or built. Circle anything that is actually manual.</li>
+      <li>Pick your most expensive data tool and apply Reis's test: is it doing undifferentiated heavy lifting, or is it your edge? Should it be?</li>
+      <li>Find one open-source tool your team runs "for free" and estimate its true cost - how many engineer-hours a month does it really consume?</li>
+      <li>Take the ten questions into your next vendor call. Note which ones the salesperson dodges.</li>
+      <li>Identify one layer you are building that you could buy. Bring the pushback you expect to session a5.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the tooling-strategy core of Reis &amp; Housley's <em>Fundamentals of Data Engineering</em> and the DeepLearning.AI Data Engineering certificate (Joe Reis), framed for leaders who approve the spend. Verified as of mid-2026 - tooling and pricing move fast, so re-verify vendor specifics before any purchase. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Fundamentals of Data Engineering (Reis &amp; Housley) - tooling philosophy</span><span class="note">Parts 1-2 · avoid undifferentiated heavy lifting; buy vs build; maximize leverage</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DLAI Source Systems, Ingestion &amp; Pipelines - M2 ingestion tooling</span><span class="note">Part 1 · where EL tools (Fivetran, Airbyte, dlt) sit in the stack</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DLAI Intro to DE - cloud fundamentals (managed vs self-run economics)</span><span class="note">Part 2 · the managed-vs-OSS cost tradeoff, at a leader's altitude</span></div>
+    </div>
+    <div class="callout tip">
+      <strong>Re-verify before you buy</strong>
+      Tool names, pricing models, and egress terms in this session are accurate as of mid-2026 but change quickly. Treat every vendor specific here as a starting point, not a quote - confirm current terms directly before signing anything.
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · Which layer of the modern data stack belongs to the learn-dataops course, not this one?</p>
+      <button class="qopt" type="button">A · Ingestion (Fivetran, Airbyte, dlt)</button>
+      <button class="qopt" type="button">B · Orchestration (Airflow, Dagster)</button>
+      <button class="qopt" type="button">C · Transform (dbt)</button>
+      <p class="qwhy">Orchestration schedules and wires the other layers, but running pipelines reliably is an operations discipline - it lives in learn-dataops. This course chooses and connects the ingestion, storage, transform, and serving layers.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · What does Joe Reis mean by "avoid undifferentiated heavy lifting"?</p>
+      <button class="qopt" type="button">A · Never build anything - always buy</button>
+      <button class="qopt" type="button">B · Open source is always cheaper than SaaS</button>
+      <button class="qopt" type="button">C · Buy the boring work everyone needs; build only the capability that is your actual edge</button>
+      <p class="qwhy">Undifferentiated work (like copying rows out of a database) is done identically by every company and earns you nothing. Rent it, and spend scarce engineers on the differentiated logic that makes your numbers yours.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · A vendor will not give a straight answer on data egress cost and how you would export your data to leave. What is that?</p>
+      <button class="qopt" type="button">A · A red flag - hidden egress and hard exits are how lock-in is monetized</button>
+      <button class="qopt" type="button">B · Normal - no vendor discusses egress</button>
+      <button class="qopt" type="button">C · A reason to sign faster before prices rise</button>
+      <p class="qwhy">Egress fees and difficult exits are often exactly where a vendor makes its margin and keeps you captive. If leaving is a mystery, the lock-in is the product - slow down and get it in writing.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 4 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>The stack in layers</b><span>Ingestion → storage → transform → serving. Orchestration wires them (= dataops course).</span></div>
+      <div class="cheat-item"><b>Three ways to get a layer</b><span>Managed / SaaS, open source self-run, or build your own. Each wins in a different case.</span></div>
+      <div class="cheat-item"><b>Reis's rule</b><span>Avoid undifferentiated heavy lifting. Buy the boring parts; build only your edge.</span></div>
+      <div class="cheat-item"><b>Managed by default</b><span>Prefer managed unless scale, cost, or control gives a concrete reason to self-run.</span></div>
+      <div class="cheat-item"><b>"Free" OSS is not free</b><span>No license fee, but engineer salaries, upgrades, and 2am pages are now your bill.</span></div>
+      <div class="cheat-item"><b>Ingestion = buy it</b><span>Almost always undifferentiated. This is why Fivetran and Airbyte thrive.</span></div>
+      <div class="cheat-item"><b>Ten vendor questions</b><span>Cost that scales, lock-in and exit, fit with your warehouse. Ask before signing.</span></div>
+      <div class="cheat-item"><b>Biggest red flag</b><span>No straight answer on egress or exit. If leaving is hard, lock-in is the product.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 4 of 6 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="a3-batch-vs-streaming.html">← Prev: Batch vs streaming</a> &nbsp;·&nbsp; <a href="a5-storage-engineering.html">Next: Storage engineering →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

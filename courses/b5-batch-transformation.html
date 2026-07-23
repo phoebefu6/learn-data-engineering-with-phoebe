@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 5 · Batch transformation - learn data engineering with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-engineering-with-phoebe</a> / Builder session 5 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Engineering with Phoebe · Builder track · Session 5 of 10</div>
+    <h1>Batch <span class="accent">transformation</span></h1>
+    <p class="sub">You have data landing in files (b4). Now you turn raw into useful: clean the types, derive the columns, join the pieces, aggregate to the grain the warehouse wants. This is the transform stage - and you will build it the modern way, in the engine, as an idempotent script you can re-run a hundred times and get the same answer. Live on DuckDB, against Daybreak's source.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Builder track</span>
+      <span class="chip audience">Practitioners: DE · analysts · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-20 · ETL/ELT, idempotency, compute at scale</span>
+      <span class="a3" style="flex:5">20-42 · Build the transform layer</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where the pipeline stands</h2>
+    </div>
+    <p class="lede">Four sessions in, Daybreak's data has a path out of the source system. You connected to the source and extracted it (b2), learned full vs incremental ingestion (b3), and picked file and table formats for the landing zone (b4). The bytes have arrived - but they are still raw: text dates, order lines not yet rolled up, nothing the warehouse can load as-is. Today is the <strong>transform</strong> stage of the lifecycle: the compute that turns landed raw data into clean, aggregated, trustworthy tables.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live pipeline - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A working transform layer for Daybreak built as one idempotent script (clean → join → aggregate), a gut-level feel for why ELT-in-the-engine is the modern default, the discipline to write transforms you can safely re-run, and an honest map of when a single node (DuckDB) is enough and when the job belongs on a distributed cluster (Spark) - which sets up b8.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: ETL vs ELT ============ -->
+  <section class="section" id="elt">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI Source Systems M2 (ETL/ELT), Fundamentals of DE</span>
+      <h2>Transform is where raw becomes useful <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Every raw table hands you problems: a date stored as text, an order split across line items, statuses you have to filter. Transformation is the compute that fixes all of it - casting types, deriving columns, joining tables, aggregating to a grain. The only real question is <em>where</em> that compute runs: before you load the data, or after. That choice is the ETL-vs-ELT debate, and the modern answer has flipped.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ETL versus ELT: where the transform box sits in the pipeline">
+        <style>
+          .etT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .etH { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .etC { font: 400 11px Inter, sans-serif; fill: #566A67; }
+          .etN { font: 600 12px Inter, sans-serif; fill: #3A1C0C; }
+          .etArr { stroke: #3AA39D; stroke-width: 2.5; fill: none; marker-end: url(#etAh); }
+        </style>
+        <defs>
+          <marker id="etAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#3AA39D"/>
+          </marker>
+        </defs>
+
+        <text class="etH" x="26" y="34">ETL - transform BEFORE load (older default)</text>
+        <rect x="26" y="48" width="150" height="46" rx="8" fill="#0A4A46"/>
+        <text class="etT" x="42" y="76">Extract</text>
+        <rect x="230" y="48" width="150" height="46" rx="8" fill="#C2683A"/>
+        <text class="etT" x="246" y="76">Transform</text>
+        <rect x="434" y="48" width="150" height="46" rx="8" fill="#0E6F6B"/>
+        <text class="etT" x="450" y="76">Load</text>
+        <rect x="638" y="48" width="180" height="46" rx="8" fill="#0E6F6B"/>
+        <text class="etT" x="654" y="76">Warehouse</text>
+        <path class="etArr" d="M176,71 L228,71"/>
+        <path class="etArr" d="M380,71 L432,71"/>
+        <path class="etArr" d="M584,71 L636,71"/>
+        <text class="etC" x="230" y="118">transform on a separate box, before it ever lands</text>
+
+        <text class="etH" x="26" y="176">ELT - transform AFTER load, in the engine (modern default)</text>
+        <rect x="26" y="190" width="150" height="46" rx="8" fill="#0A4A46"/>
+        <text class="etT" x="42" y="218">Extract</text>
+        <rect x="230" y="190" width="150" height="46" rx="8" fill="#0E6F6B"/>
+        <text class="etT" x="246" y="218">Load</text>
+        <rect x="434" y="190" width="384" height="46" rx="8" fill="#C2683A"/>
+        <text class="etT" x="450" y="218">Transform (inside the warehouse engine)</text>
+        <path class="etArr" d="M176,213 L228,213"/>
+        <path class="etArr" d="M380,213 L432,213"/>
+        <text class="etC" x="434" y="260">the powerful warehouse engine does the heavy lifting - load raw first, shape in place</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the only difference is where the copper transform box sits</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>ELT vs ETL, and why the default flipped<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>ETL</strong> transforms data <em>before</em> loading it - on a separate processing box, so only clean data ever lands. That made sense when warehouse compute was scarce and expensive. <strong>ELT</strong> loads the raw data first, then transforms it <em>in place</em> using the warehouse engine's own power. Today ELT is the default, because the engine (Snowflake, BigQuery, DuckDB) is now the most powerful, cheapest-to-scale compute you have.</p>
+        <ul>
+          <li><strong>ELT keeps the raw copy:</strong> load first means you always have the untouched source to re-transform when requirements change. ETL throws the raw away.</li>
+          <li><strong>The engine is the muscle:</strong> pushing transforms into a columnar engine beats hand-rolled row-by-row processing on a middle box. Let the database do what it is best at.</li>
+          <li><strong>DuckDB is doing ELT right now:</strong> every playground on this page loads Daybreak's raw source, then transforms in the engine. That is ELT in miniature.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Why ELT won.</strong> A team on ETL had to file a ticket and wait a day whenever analysts wanted a new column - the transform box was a bottleneck owned by engineering. Moving to ELT, analysts wrote their own SQL transforms against raw data already in the warehouse. The raw layer stayed put; the shaping moved to whoever needed it. Throughput went up because the engine, not a middle box, did the work.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>When ETL still earns its place<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>ELT is the default, not a law. ETL-before-load still wins in a few spots: when you legally must not land raw PII (mask it before it touches the warehouse), when the source volume is so huge that loading everything is wasteful (filter first), or when a lightweight streaming transform is cheaper mid-flight than a batch pass later. The instinct that matters: default to ELT, reach for pre-load transformation only when a real constraint forces it.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: IDEMPOTENCY ============ -->
+  <section class="section" id="idempotent">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · the discipline that makes transforms safe</span>
+      <h2>Idempotent transforms: re-run without fear <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">Pipelines crash. A network blips, a node dies, a source is late - and your transform stops halfway, or fires twice on a retry. An <strong>idempotent</strong> transform is one you can run again and again and get the exact same result. The trick is simple: rebuild the output table from scratch with <code>CREATE OR REPLACE</code> instead of appending to it with <code>INSERT</code>. Build it here once, then run it twice and watch the count stay identical.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Build a clean daily table - then run it twice<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>This transform reads raw <code>orders</code>, casts the text date to a real DATE, filters to completed orders, and aggregates to a daily grain - all with <code>CREATE OR REPLACE</code>. Press <strong>▶ Run</strong>. Then press it again. The row count does not move, because the table is rebuilt from source every time, not appended to. That is idempotency.</p>
+        <div class="sqlbox" data-caption="Run it, note the count, run it again. Identical - because CREATE OR REPLACE rebuilds from scratch.">
+          <pre class="sql-src">CREATE OR REPLACE TABLE daily_orders AS
+SELECT CAST(order_date AS DATE)                       AS day,
+       count(*)                                       AS orders,
+       count(*) FILTER (WHERE status = 'completed')   AS completed,
+       count(*) FILTER (WHERE status = 'refunded')    AS refunded
+FROM orders
+GROUP BY day;
+
+SELECT count(*) AS rows_in_table, sum(orders) AS orders_total
+FROM daily_orders;</pre>
+        </div>
+        <div class="callout tip">
+          <strong>Why FILTER beats a WHERE here</strong>
+          <code>FILTER (WHERE status = 'completed')</code> counts a subset without dropping the other rows from the aggregate. One pass over the data gives you total, completed, and refunded side by side - cleaner than three separate queries stitched together.
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Derived columns and FILTER aggregates<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Two transform moves you will reach for constantly:</p>
+        <ul>
+          <li><strong>Derived columns:</strong> a transform rarely just copies - it computes. <code>CAST(order_date AS DATE)</code> fixes the text-date sin from the source. <code>quantity * unit_price AS line_amount</code> derives revenue that the source never stored. Deriving in the transform means every consumer downstream sees the same clean value.</li>
+          <li><strong>FILTER aggregates:</strong> <code>count(*) FILTER (WHERE ...)</code> and <code>sum(x) FILTER (WHERE ...)</code> let one aggregate query answer several questions at once - completed vs refunded vs total in a single scan. It is faster and clearer than joining three sub-queries.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: COMPUTE AT SCALE ============ -->
+  <section class="section" id="scale">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers DLAI Storage M3 (◐), Fundamentals of DE</span>
+      <h2>Transform compute at scale: one node vs many <span class="tag concept">4 min live</span></h2>
+    </div>
+    <p class="lede">DuckDB runs your transform on a single machine - and a single modern machine is astonishingly capable, comfortably handling data up to roughly 100 GB. Only when a dataset genuinely outgrows one machine do you reach for distributed compute like Spark, which spreads the same transform across a cluster. Same logic, very different engine. Knowing where the line sits keeps you from paying for a cluster you do not need - or hitting a wall on a laptop that cannot cope.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Single-node compute versus distributed compute across a cluster">
+        <style>
+          .scT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .scH { font: 700 14px Inter, sans-serif; fill: #14211F; }
+          .scC { font: 400 11px Inter, sans-serif; fill: #566A67; }
+          .scN { font: 600 12px Inter, sans-serif; fill: #3A1C0C; }
+        </style>
+        <text class="scH" x="26" y="34">Single node (DuckDB, this course) - great to ~100 GB</text>
+        <rect x="26" y="48" width="300" height="120" rx="10" fill="#E8F4F3" stroke="#A6D9D4"/>
+        <rect x="60" y="78" width="232" height="60" rx="8" fill="#0E6F6B"/>
+        <text class="scT" x="86" y="114">one machine does it all</text>
+        <text class="scC" x="60" y="158">no cluster, no shuffle, no ops - just run it</text>
+
+        <text class="scH" x="440" y="34">Distributed (Spark) - when data exceeds one machine</text>
+        <rect x="440" y="48" width="414" height="120" rx="10" fill="#FBEDE4" stroke="#C2683A"/>
+        <rect x="460" y="78" width="88" height="60" rx="6" fill="#C2683A"/>
+        <text class="scT" x="486" y="112">node</text>
+        <rect x="560" y="78" width="88" height="60" rx="6" fill="#C2683A"/>
+        <text class="scT" x="586" y="112">node</text>
+        <rect x="660" y="78" width="88" height="60" rx="6" fill="#C2683A"/>
+        <text class="scT" x="686" y="112">node</text>
+        <rect x="760" y="78" width="76" height="60" rx="6" fill="#C2683A"/>
+        <text class="scT" x="778" y="112">node</text>
+        <text class="scC" x="460" y="158">work split across the cluster - power, but ops and cost</text>
+
+        <rect x="26" y="200" width="14" height="14" rx="3" fill="#C2683A"/>
+        <text class="scN" x="50" y="212">Rule of thumb: reach for a cluster when one machine can no longer hold or chew the data - not before.</text>
+        <text class="scC" x="26" y="248">Most transforms you will write for years fit on one node. Distributed is b8.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the same transform, one node vs a cluster of them</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The same transform, on Spark (read-only)<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Here is Demo 1's daily aggregate expressed in PySpark - the distributed engine you would use if Daybreak had billions of rows instead of thirty-three. The logic is identical; only the engine and the scale change. This snippet <strong>cannot run in a browser</strong> - Spark needs a cluster (or at least a local JVM) - so read it, do not run it.</p>
+        <div class="prompt-box">
+          <span class="label">PySpark · runs on a cluster, not here</span>
+from pyspark.sql import functions as F
+
+daily = (spark.read.parquet("s3://daybreak/raw/orders/")
+         .filter(F.col("status") == "completed")
+         .withColumn("day", F.to_date("order_date"))
+         .groupBy("day")
+         .agg(F.count("*").alias("orders"))
+         .orderBy("day"))
+
+daily.write.mode("overwrite").parquet("s3://daybreak/marts/daily_orders/")
+        </div>
+        <p>Note <code>mode("overwrite")</code> - that is Spark's way of staying idempotent, exactly like <code>CREATE OR REPLACE</code> in DuckDB. The discipline travels across engines; the syntax does not.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Build the transform layer, end to end <span class="tag demo">★ 11 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">One idempotent script that takes Daybreak's raw source and produces a served daily-revenue table the warehouse could load. Clean the orders (typed date), join the order lines for revenue, aggregate to daily - every table built with <code>CREATE OR REPLACE</code> so the whole script re-runs safely.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Clean:</strong> rebuild <code>clean_orders</code> from the raw source with the text date cast to a real DATE.</p></div>
+      <div class="step"><p><strong>Join:</strong> attach <code>order_items</code> so quantity and unit price become line revenue.</p></div>
+      <div class="step"><p><strong>Aggregate:</strong> roll up to one row per day - the grain the warehouse wants.</p></div>
+      <div class="step"><p><strong>Serve:</strong> the final SELECT is the table a warehouse loader would pick up.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="Three CREATE OR REPLACE tables + a served SELECT. Re-run as many times as you like - identical every time.">
+      <pre class="sql-src">-- CLEAN: fix the text date, keep only what we need
+CREATE OR REPLACE TABLE clean_orders AS
+SELECT order_id, customer_id,
+       CAST(order_date AS DATE) AS order_date,
+       status, channel
+FROM orders;
+
+-- JOIN: bring in line items to compute revenue the source never stored
+CREATE OR REPLACE TABLE order_revenue AS
+SELECT co.order_id, co.order_date, co.channel,
+       SUM(oi.quantity * oi.unit_price) AS revenue
+FROM clean_orders co
+JOIN order_items oi ON co.order_id = oi.order_id
+WHERE co.status = 'completed'
+GROUP BY co.order_id, co.order_date, co.channel;
+
+-- AGGREGATE: roll up to a daily grain
+CREATE OR REPLACE TABLE daily_revenue AS
+SELECT order_date AS day,
+       count(*)              AS orders,
+       ROUND(SUM(revenue),2) AS revenue
+FROM order_revenue
+GROUP BY order_date;
+
+-- SERVE: what the warehouse would load
+SELECT * FROM daily_revenue ORDER BY day LIMIT 10;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>This layered shape is how transform code stays readable.</strong> Each table has one job - clean, join, aggregate - so when a number looks wrong you know exactly which layer to inspect. Real teams give these layers names (staging, intermediate, marts) and let tools like dbt manage the dependency order. The engine and the naming change; the clean-then-shape-then-serve spine you just built does not.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Your turn: extend it, then break it on purpose <span class="tag demo">★ 10 min · build your own</span></h2>
+    </div>
+    <p class="lede">Q1 extends the aggregate. Q2 shows you the double-count bug that non-idempotent transforms cause - by running the mistake yourself. Q3 is a thinking exercise about when to leave DuckDB for Spark.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q1 · Add a channel dimension to the daily aggregate<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-caption="Hint: add o.channel to both SELECT and GROUP BY so each day splits into web vs app.">
+          <pre class="sql-src">CREATE OR REPLACE TABLE daily_by_channel AS
+SELECT CAST(o.order_date AS DATE) AS day,
+       o.channel,
+       ROUND(SUM(oi.quantity * oi.unit_price), 2) AS revenue
+FROM orders o
+JOIN order_items oi ON o.order_id = oi.order_id
+WHERE o.status = 'completed'
+GROUP BY day, o.channel;
+
+SELECT * FROM daily_by_channel ORDER BY day, channel LIMIT 12;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q2 · See the double-count bug for yourself<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>This transform appends with <code>INSERT</code> instead of rebuilding. To simulate a pipeline that crashed and got retried, the same load fires twice. Run it and read <code>row_copies</code>: every day appears twice, so any revenue sum off this table is doubled. That is the bug idempotency prevents.</p>
+        <div class="sqlbox" data-caption="row_copies = 2 everywhere. A retry silently doubled the data. CREATE OR REPLACE would have made re-runs safe.">
+          <pre class="sql-src">-- NON-idempotent: an empty shell we append into
+CREATE TABLE daily_orders (day DATE, orders INTEGER);
+
+-- First load
+INSERT INTO daily_orders
+SELECT CAST(order_date AS DATE), count(*)
+FROM orders WHERE status = 'completed' GROUP BY 1;
+
+-- The pipeline crashed and got re-run - the SAME insert fires again
+INSERT INTO daily_orders
+SELECT CAST(order_date AS DATE), count(*)
+FROM orders WHERE status = 'completed' GROUP BY 1;
+
+-- Every day is now duplicated - revenue would double-count
+SELECT day, count(*) AS row_copies
+FROM daily_orders GROUP BY day ORDER BY day LIMIT 8;</pre>
+        </div>
+        <div class="callout tip">
+          <strong>The fix in one line</strong>
+          Swap the empty shell + two INSERTs for a single <code>CREATE OR REPLACE TABLE daily_orders AS SELECT ...</code>. Now a retry rebuilds the table from source instead of stacking on top of it - re-run it ten times, the answer never moves.
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Q3 · When do you push the transform to Spark?<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>No SQL - reason it through. You leave a single-node engine like DuckDB for a distributed one like Spark when the data no longer fits or no longer chews on one machine: roughly, when a single transform's input pushes past what one big box can hold in memory plus spill (call it the ~100 GB-and-up zone, though hardware keeps moving the line). Below that, a cluster is pure overhead - more ops, more cost, more moving parts, and usually <em>slower</em> for small data because of coordination. The honest default: start on one node, prove you have outgrown it with a real measurement, and only then distribute. Most Daybreak-sized workloads never leave the laptop. Distributed processing is exactly what b8 builds.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Take Demo 1's script and add a fourth layer: a <code>customer_revenue</code> table (join through <code>orders</code> to <code>customers</code>, aggregate by <code>plan</code>). Keep every table <code>CREATE OR REPLACE</code>.</li>
+      <li>Rewrite Q2's broken append version as an idempotent one, then run it three times and confirm the count holds.</li>
+      <li>Point at one transform in a pipeline you touch at work. Is it ETL or ELT? Is it idempotent - what happens if it runs twice?</li>
+      <li>Estimate the biggest single input a transform of yours processes. Is it under ~100 GB? Then a single node is likely enough - is anyone paying for a cluster it does not need?</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the transform-compute core of the DeepLearning.AI Data Engineering Professional Certificate (Joe Reis) and Reis &amp; Housley's <em>Fundamentals of Data Engineering</em>, run on a live engine instead of slides. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DLAI Source Systems, Ingestion &amp; Pipelines - M2: ETL vs ELT</span><span class="note">Part 1 · where the transform sits, and why ELT is the modern default</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Fundamentals of Data Engineering (Reis &amp; Housley) - transformation</span><span class="note">Parts 1-2 · transform compute, idempotency, derived columns</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DLAI Data Storage &amp; Queries - M3: query life, columnar performance</span><span class="note">Part 3 · single-node vs distributed compute; full model in b8</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What is the difference between ELT and ETL?</p>
+      <button class="qopt" type="button">A · ELT is for streaming, ETL is for batch</button>
+      <button class="qopt" type="button">B · ELT loads raw data first and transforms it in the engine; ETL transforms before loading</button>
+      <button class="qopt" type="button">C · ELT is a newer name for the same process, nothing changes</button>
+      <p class="qwhy">ELT extracts, loads the raw data, then transforms it in place using the warehouse engine's power - keeping a raw copy. ETL transforms on a separate box before loading. ELT is today's default because the engine is now the cheapest, most powerful compute you have.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · What makes a transform idempotent?</p>
+      <button class="qopt" type="button">A · It runs faster the second time</button>
+      <button class="qopt" type="button">B · It only ever runs once</button>
+      <button class="qopt" type="button">C · Re-running it gives the same result - e.g. CREATE OR REPLACE rebuilds instead of INSERT appending</button>
+      <p class="qwhy">An idempotent transform produces the same output no matter how many times it runs. Rebuilding the output with CREATE OR REPLACE is idempotent; appending with INSERT is not - a retry double-counts, exactly the bug Demo 2 Q2 shows.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · When do you move a transform from a single node (DuckDB) to distributed compute (Spark)?</p>
+      <button class="qopt" type="button">A · When the data genuinely exceeds what one machine can hold or process - not before</button>
+      <button class="qopt" type="button">B · Always, because clusters are faster for every job</button>
+      <button class="qopt" type="button">C · Whenever the SQL has a join</button>
+      <p class="qwhy">A single modern machine handles data comfortably to around 100 GB. Below that, a cluster is pure overhead and often slower due to coordination. Distribute only once you have measured that one node can no longer cope. That is what b8 builds.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 5 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Transform stage</b><span>Raw → useful: clean types, derive columns, join, aggregate to the grain the consumer wants.</span></div>
+      <div class="cheat-item"><b>ETL</b><span>Transform BEFORE load, on a separate box. Older default; throws the raw away.</span></div>
+      <div class="cheat-item"><b>ELT</b><span>Load raw first, transform IN the engine. Modern default; keeps the raw copy, engine does the work.</span></div>
+      <div class="cheat-item"><b>Idempotent</b><span>Re-run → same result. Use CREATE OR REPLACE, not INSERT-append. Pipelines crash and retry.</span></div>
+      <div class="cheat-item"><b>The double-count bug</b><span>INSERT into a table twice on a retry = every row duplicated. CREATE OR REPLACE prevents it.</span></div>
+      <div class="cheat-item"><b>FILTER aggregate</b><span>count(*) FILTER (WHERE ...) answers several questions in one scan. Derive values, don't re-store raw.</span></div>
+      <div class="cheat-item"><b>Single node</b><span>DuckDB on one machine handles data comfortably to ~100 GB. Most transforms never need more.</span></div>
+      <div class="cheat-item"><b>Distributed</b><span>Spark across a cluster - only when data exceeds one machine. Same logic, more ops. That is b8.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 5 of 10 · learn-data-engineering-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b4-file-and-table-formats.html">← Prev: File and table formats</a> &nbsp;·&nbsp; <a href="b6-streaming-and-cdc.html">Next: Streaming and CDC →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/de-seed.js?v=1"></script>
+<script src="../assets/de-live.js?v=2"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>
