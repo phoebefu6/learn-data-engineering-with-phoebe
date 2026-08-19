@@ -185,6 +185,41 @@ LIMIT 8;</pre>
       <summary><span class="mode self">Self-study</span>What table formats add on top of Parquet<span class="mini">3 min read</span><span class="caret">▶</span></summary>
       <div class="body">
         <p>A table format keeps a manifest of which Parquet files make up the table right now, plus a log of changes. That metadata unlocks three things plain files cannot do:</p>
+<figure class="zoomable">
+  <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A two layer stack showing what table formats such as Iceberg, Delta and Hudi add on top of plain Parquet files: ACID transactions, schema evolution and time travel, turning fast columnar files with no transactions into a table you can trust.">
+    <style>
+      .tfT { font: 700 13px Inter, sans-serif; fill: #fff; }
+      .tfS { font: 400 11.5px Inter, sans-serif; fill: rgba(255,255,255,.84); }
+      .tfC { font: 700 11px Inter, sans-serif; fill: #0A4A46; }
+      .tfE { font: 700 11.5px Inter, sans-serif; fill: #14211F; }
+      .tfN { font: 400 12px Inter, sans-serif; fill: #566A67; }
+    </style>
+    <rect x="0" y="0" width="880" height="300" fill="#F6FAF9"/>
+
+    <rect x="60" y="60" width="220" height="30" rx="8" fill="#A6D9D4"/>
+    <text class="tfC" x="170" y="80" text-anchor="middle">ACID transactions</text>
+    <rect x="300" y="60" width="220" height="30" rx="8" fill="#A6D9D4"/>
+    <text class="tfC" x="410" y="80" text-anchor="middle">schema evolution</text>
+    <rect x="540" y="60" width="150" height="30" rx="8" fill="#A6D9D4"/>
+    <text class="tfC" x="615" y="80" text-anchor="middle">time travel</text>
+
+    <rect x="40" y="104" width="660" height="56" rx="10" fill="#0E6F6B"/>
+    <text class="tfT" x="60" y="128">TABLE FORMAT (LAKEHOUSE)</text>
+    <text class="tfS" x="60" y="147">adds a manifest over Parquet files</text>
+
+    <rect x="40" y="196" width="660" height="56" rx="10" fill="#566A67"/>
+    <text class="tfT" x="60" y="220">PARQUET FILES</text>
+    <text class="tfS" x="60" y="239">fast, columnar, no transactions</text>
+
+    <path d="M716,104 h14 v148 h-14" fill="none" stroke="#0E6F6B" stroke-width="1.6"/>
+    <text class="tfE" x="740" y="174">= a table you</text>
+    <text class="tfE" x="740" y="190">can trust</text>
+
+    <text class="tfN" x="40" y="276">A pile of Parquet files is not a table - you cannot update it safely or replay yesterday's version.</text>
+  </svg>
+  <figcaption>🔍 Click to zoom - a table format adds a manifest, not more storage</figcaption>
+</figure>
+
         <ul>
           <li><strong>Transactions (ACID):</strong> a write either fully lands or not at all. No more readers catching a half-written table mid-update.</li>
           <li><strong>Schema evolution:</strong> add, rename, or drop a column without rewriting every file. The metadata tracks the change.</li>
@@ -230,6 +265,32 @@ SELECT 'csv',
     <div class="callout example">
       <span class="ex-pill">Real world</span>
       <p><strong>Lost types cause silent bugs.</strong> A pipeline that lands to CSV and re-reads it often re-guesses a date as a string or a zip code as a number. Downstream a sort goes alphabetical instead of chronological, or leading zeros vanish. Parquet's baked-in types remove that whole class of bug - the data comes back exactly as it went in, which is why it is the default for anything a machine will read again.</p>
+<figure class="zoomable">
+  <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A before and after showing what happens to Daybreak's order_date column on a round trip through CSV versus Parquet: CSV returns it as text that needs re-parsing and sorts alphabetically, while Parquet keeps it as a DATE that sorts correctly.">
+    <style>
+      .dlH { font: 700 13px Inter, sans-serif; }
+      .dlB { font: 400 12px Inter, sans-serif; fill: #14211F; }
+      .dlN { font: 400 12px Inter, sans-serif; fill: #566A67; }
+    </style>
+    <rect x="0" y="0" width="880" height="300" fill="#F6FAF9"/>
+
+    <rect x="40" y="50" width="390" height="180" rx="12" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="1.5"/>
+    <text class="dlH" x="58" y="84" fill="#991B1B">✗ CSV loses the type</text>
+    <text class="dlB" x="58" y="114">order_date comes back as text</text>
+    <text class="dlB" x="58" y="134">needs re-parsing every read</text>
+    <text class="dlB" x="58" y="154">sorts alphabetically, not by date</text>
+
+    <rect x="450" y="50" width="390" height="180" rx="12" fill="#E8F4F3" stroke="#0E6F6B" stroke-width="1.5"/>
+    <text class="dlH" x="468" y="84" fill="#0A4A46">✓ Parquet keeps the type</text>
+    <text class="dlB" x="468" y="114">order_date stays a DATE</text>
+    <text class="dlB" x="468" y="134">no re-parsing on read</text>
+    <text class="dlB" x="468" y="154">sorts correctly, chronologically</text>
+
+    <text class="dlN" x="40" y="276">Lost types cause silent bugs - a sort goes alphabetical instead of chronological, unnoticed.</text>
+  </svg>
+  <figcaption>🔍 Click to zoom - the same round trip, one format remembers the type</figcaption>
+</figure>
+
     </div>
   </section>
 

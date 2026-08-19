@@ -118,6 +118,32 @@
           <li><strong>ELT (extract, load, transform):</strong> land the raw data first, transform it <em>later</em>, inside the destination. The modern default - cloud storage is cheap, so you keep the raw copy and reshape on demand.</li>
         </ul>
         <p>This whole track is ELT-shaped: b2-b4 land raw data, b5 and b8 transform it after it lands. Keeping the raw copy means you can re-transform any time without re-extracting from the source.</p>
+<figure class="zoomable">
+  <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A before and after contrasting ETL, which transforms data before loading it and assumes storage is expensive, with ELT, which loads raw data first and transforms it later because cloud storage is cheap; this data engineering track is built ELT-shaped, landing raw in b2 through b4 and transforming in b5 and b8.">
+    <style>
+      .elH { font: 700 13px Inter, sans-serif; }
+      .elB { font: 400 12px Inter, sans-serif; fill: #14211F; }
+      .elN { font: 400 12px Inter, sans-serif; fill: #566A67; }
+    </style>
+    <rect x="0" y="0" width="880" height="300" fill="#F6FAF9"/>
+
+    <rect x="40" y="50" width="390" height="180" rx="12" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="1.5"/>
+    <text class="elH" x="58" y="84" fill="#991B1B">✗ ETL - transform first</text>
+    <text class="elB" x="58" y="114">reshape before it lands</text>
+    <text class="elB" x="58" y="134">assumes storage is expensive</text>
+    <text class="elB" x="58" y="154">the old default</text>
+
+    <rect x="450" y="50" width="390" height="180" rx="12" fill="#E8F4F3" stroke="#0E6F6B" stroke-width="1.5"/>
+    <text class="elH" x="468" y="84" fill="#0A4A46">✓ ELT - load raw first</text>
+    <text class="elB" x="468" y="114">land raw, transform later</text>
+    <text class="elB" x="468" y="134">storage is cheap now</text>
+    <text class="elB" x="468" y="154">this whole track is ELT-shaped</text>
+
+    <text class="elN" x="40" y="276">b2 to b4 land raw data; b5 and b8 transform it after it lands - re-transform anytime, no re-extract.</text>
+  </svg>
+  <figcaption>🔍 Click to zoom - land raw first, transform later, re-transform anytime</figcaption>
+</figure>
+
         <div class="callout example">
           <span class="ex-pill">Real world</span>
           <p><strong>Why modern stacks went ELT.</strong> When a warehouse charged by the gigabyte, teams transformed first to store less (ETL). Once cloud storage dropped to cents, the calculus flipped: land everything raw, transform later, and you get replay, auditability, and the freedom to fix a transform bug without touching the source. That flip is why "load then transform" is now the default.</p>
@@ -220,6 +246,31 @@ SELECT
     <div class="callout example">
       <span class="ex-pill">Real world</span>
       <p><strong>This gap is money at scale.</strong> On a fact table with a billion rows gaining a million a day, full reload moves a billion rows every night; incremental moves a million. Same freshness, one-thousandth of the transfer, compute, and cloud bill. The two-line difference you just ran is the single highest-leverage decision in most ingestion pipelines.</p>
+<figure class="zoomable">
+  <svg viewBox="0 0 880 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A bar chart comparing nightly data movement for the same freshness: a full reload of a billion row fact table moves one billion rows every night, while incremental ingestion on the same table moves only the one million rows that changed.">
+    <style>
+      .scT { font: 700 13px Inter, sans-serif; fill: #14211F; }
+      .scL { font: 600 11px Inter, sans-serif; fill: #14211F; }
+      .scVi { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+      .scVout { font: 700 12px Inter, sans-serif; fill: #3A1C0C; }
+      .scN { font: 400 12px Inter, sans-serif; fill: #566A67; }
+    </style>
+    <rect x="0" y="0" width="880" height="170" fill="#F6FAF9"/>
+    <text class="scT" x="40" y="26">Same freshness, very different cost</text>
+
+    <text class="scL" x="240" y="67" text-anchor="end">Full reload, nightly</text>
+    <rect x="260" y="48" width="480" height="28" rx="5" fill="#0E6F6B"/>
+    <text class="scVi" x="272" y="67">1,000,000,000 rows</text>
+
+    <text class="scL" x="240" y="111" text-anchor="end">Incremental, nightly</text>
+    <rect x="260" y="92" width="6" height="28" fill="#C2683A"/>
+    <text class="scVout" x="278" y="111">1,000,000 rows</text>
+
+    <text class="scN" x="40" y="142">Same freshness, one-thousandth of the transfer, compute and cloud bill versus full reload.</text>
+  </svg>
+  <figcaption>🔍 Click to zoom - same freshness, one-thousandth of the rows moved</figcaption>
+</figure>
+
     </div>
   </section>
 

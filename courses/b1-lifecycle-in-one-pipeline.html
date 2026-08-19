@@ -167,6 +167,52 @@
       <summary><span class="mode live">Live</span>The one-sentence test<span class="mini">2 min</span><span class="caret">▶</span></summary>
       <div class="body">
         <p>When a task lands on your desk, ask which verb it is. <strong>"Get this data here"</strong> is data engineering. <strong>"Shape it into facts and dimensions"</strong> is warehousing. <strong>"Make sure it runs at 2am and pages someone if it fails"</strong> is DataOps. Most real jobs blend all three, but the verb tells you which skill - and which course - the task belongs to.</p>
+<figure class="zoomable">
+  <svg viewBox="0 0 880 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A decision tree routing a task to the right craft by its verb: getting data to a destination is data engineering, shaping it into facts and dimensions is data warehousing, and scheduling, testing and monitoring it is DataOps.">
+    <style>
+      .vbQ { font: 700 12px Inter, sans-serif; fill: #14211F; }
+      .vbOw { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+      .vbSw { font: 400 11px Inter, sans-serif; fill: rgba(255,255,255,.84); }
+      .vbE { font: 700 11px Inter, sans-serif; fill: #566A67; }
+      .vbN { font: 400 12px Inter, sans-serif; fill: #566A67; }
+    </style>
+    <defs>
+      <marker id="vbArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#566A67"/>
+      </marker>
+    </defs>
+    <rect x="0" y="0" width="880" height="280" fill="#F6FAF9"/>
+
+    <rect x="40" y="100" width="240" height="56" rx="10" fill="#E8F4F3" stroke="#0A4A46" stroke-width="1.5"/>
+    <text class="vbQ" x="160" y="132" text-anchor="middle">Which verb is</text>
+    <text class="vbQ" x="160" y="146" text-anchor="middle">the task?</text>
+
+    <rect x="640" y="20" width="200" height="56" rx="10" fill="#0E6F6B"/>
+    <text class="vbOw" x="740" y="44" text-anchor="middle">Data engineering</text>
+    <text class="vbSw" x="740" y="62" text-anchor="middle">source to warehouse door</text>
+
+    <rect x="640" y="100" width="200" height="56" rx="10" fill="#3AA39D"/>
+    <text class="vbOw" x="740" y="124" text-anchor="middle">Data warehousing</text>
+    <text class="vbSw" x="740" y="142" text-anchor="middle">facts, dimensions, marts</text>
+
+    <rect x="640" y="180" width="200" height="56" rx="10" fill="#0A4A46"/>
+    <text class="vbOw" x="740" y="204" text-anchor="middle">DataOps</text>
+    <text class="vbSw" x="740" y="222" text-anchor="middle">schedule, test, monitor</text>
+
+    <path d="M280,128 V48 H640" fill="none" stroke="#566A67" stroke-width="1.5" marker-end="url(#vbArrow)"/>
+    <text class="vbE" x="290" y="84" text-anchor="start">get it here</text>
+
+    <path d="M280,128 H640" fill="none" stroke="#566A67" stroke-width="1.5" marker-end="url(#vbArrow)"/>
+    <text class="vbE" x="460" y="122" text-anchor="middle">shape it</text>
+
+    <path d="M280,128 V208 H640" fill="none" stroke="#566A67" stroke-width="1.5" marker-end="url(#vbArrow)"/>
+    <text class="vbE" x="290" y="170" text-anchor="start">run + page</text>
+
+    <text class="vbN" x="40" y="258">Most real jobs blend all three, but the verb tells you which skill - and which course - owns the task.</text>
+  </svg>
+  <figcaption>🔍 Click to zoom - the verb in the task tells you which course owns it</figcaption>
+</figure>
+
         <div class="callout tip">
           <strong>Why we keep the lines</strong>
           You already built the Daybreak warehouse (star schema, SCDs, marts) in the sibling course. This course does not repeat it - it builds what feeds it. When you see "now the warehouse models this", that is your cue the DE job is done.
@@ -187,6 +233,32 @@
       <summary><span class="mode live">Live</span>Your first source read<span class="mini">3 min</span><span class="caret">▶</span></summary>
       <div class="body">
         <p>Below is a real, editable DuckDB engine running against Daybreak's raw source tables - the OLTP system you will ingest all track. Press <strong>▶ Run</strong>. First run downloads the engine once (~8 MB, then cached).</p>
+<figure class="zoomable">
+  <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A before and after showing Daybreak's raw order_date column stored as VARCHAR text, which must be cast to a real DATE, filtered to completed orders and aggregated to daily revenue before it can be trusted for analytics.">
+    <style>
+      .dtH { font: 700 13px Inter, sans-serif; }
+      .dtB { font: 400 12px Inter, sans-serif; fill: #14211F; }
+      .dtN { font: 400 12px Inter, sans-serif; fill: #566A67; }
+    </style>
+    <rect x="0" y="0" width="880" height="300" fill="#F6FAF9"/>
+
+    <rect x="40" y="50" width="390" height="180" rx="12" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="1.5"/>
+    <text class="dtH" x="58" y="84" fill="#991B1B">✗ order_date as VARCHAR</text>
+    <text class="dtB" x="58" y="114">typeof(order_date) = VARCHAR</text>
+    <text class="dtB" x="58" y="134">looks fine until you filter or sort</text>
+    <text class="dtB" x="58" y="154">normal for an app database</text>
+
+    <rect x="450" y="50" width="390" height="180" rx="12" fill="#E8F4F3" stroke="#0E6F6B" stroke-width="1.5"/>
+    <text class="dtH" x="468" y="84" fill="#0A4A46">✓ order_date cast to DATE</text>
+    <text class="dtB" x="468" y="114">CAST(order_date AS DATE)</text>
+    <text class="dtB" x="468" y="134">filter to completed orders</text>
+    <text class="dtB" x="468" y="154">aggregate to daily revenue</text>
+
+    <text class="dtN" x="40" y="276">Cleaning the date is a transform step - the source hands you what it hands you, the pipeline copes.</text>
+  </svg>
+  <figcaption>🔍 Click to zoom - the source hands you text, the transform step makes it a date</figcaption>
+</figure>
+
         <div class="sqlbox" data-caption="This is the GENERATION stage - data as the source system holds it, warts and all.">
           <pre class="sql-src">SELECT order_id, customer_id, order_date,
        typeof(order_date) AS stored_as, status

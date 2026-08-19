@@ -208,6 +208,32 @@ SELECT count(*) AS days, round(sum(revenue), 2) AS total_revenue FROM daily_reve
     <div class="callout example">
       <span class="ex-pill">Real world</span>
       <p><strong>Idempotency is what lets a pipeline be re-run safely.</strong> When a nightly job fails halfway and someone re-triggers it at 6am, CREATE OR REPLACE means the target is rebuilt cleanly, not double-counted. This one habit turns a fragile pipeline into one DataOps can schedule and retry without fear.</p>
+<figure class="zoomable">
+  <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A before and after showing why idempotent writes matter in the Daybreak pipeline: without CREATE OR REPLACE a re-triggered job appends on top of itself and double-counts revenue, while with CREATE OR REPLACE the target rebuilds cleanly and produces identical counts whether run once or twice.">
+    <style>
+      .ipH { font: 700 13px Inter, sans-serif; }
+      .ipB { font: 400 12px Inter, sans-serif; fill: #14211F; }
+      .ipN { font: 400 12px Inter, sans-serif; fill: #566A67; }
+    </style>
+    <rect x="0" y="0" width="880" height="300" fill="#F6FAF9"/>
+
+    <rect x="40" y="50" width="390" height="180" rx="12" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="1.5"/>
+    <text class="ipH" x="58" y="84" fill="#991B1B">✗ APPEND on re-run</text>
+    <text class="ipB" x="58" y="114">job fails halfway, re-triggered</text>
+    <text class="ipB" x="58" y="134">appends again on top of itself</text>
+    <text class="ipB" x="58" y="154">revenue is double-counted</text>
+
+    <rect x="450" y="50" width="390" height="180" rx="12" fill="#E8F4F3" stroke="#0E6F6B" stroke-width="1.5"/>
+    <text class="ipH" x="468" y="84" fill="#0A4A46">✓ CREATE OR REPLACE</text>
+    <text class="ipB" x="468" y="114">re-triggered at 6am, safely</text>
+    <text class="ipB" x="468" y="134">target rebuilt cleanly</text>
+    <text class="ipB" x="468" y="154">counts identical, run once or twice</text>
+
+    <text class="ipN" x="40" y="276">Run the box twice - the counts stay identical, proving the write is safe for DataOps to retry.</text>
+  </svg>
+  <figcaption>🔍 Click to zoom - CREATE OR REPLACE is what lets DataOps retry without fear</figcaption>
+</figure>
+
     </div>
   </section>
 
@@ -264,6 +290,32 @@ ORDER BY day, channel;</pre>
       <summary><span class="mode self">Self-study</span>Where to go next, and the honest gaps<span class="mini">3 min read</span><span class="caret">▶</span></summary>
       <div class="body">
         <p>The builder track (b1-b10) gave you the hands; the executive a-track gives leaders the same lifecycle as decisions and tradeoffs without the SQL. Together they cover the craft and the judgement. From here:</p>
+<figure class="zoomable">
+  <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A before and after showing the honest scope of this ten session data engineering track: orchestration, CI/CD, production monitoring and live Spark or Kafka clusters are out of scope and live in learn-dataops, while extracting from a live source, transforming defensively and idempotently, and partitioning and serving to the warehouse is what the ten sessions actually built.">
+    <style>
+      .sbH { font: 700 13px Inter, sans-serif; }
+      .sbB { font: 400 12px Inter, sans-serif; fill: #14211F; }
+      .sbN { font: 400 12px Inter, sans-serif; fill: #566A67; }
+    </style>
+    <rect x="0" y="0" width="880" height="300" fill="#F6FAF9"/>
+
+    <rect x="40" y="50" width="390" height="180" rx="12" fill="#DDE9E7" stroke="#B2CCC8" stroke-width="1.5"/>
+    <text class="sbH" x="58" y="84" fill="#566A67">Needs other tooling</text>
+    <text class="sbB" x="58" y="114">orchestration, DAGs</text>
+    <text class="sbB" x="58" y="134">CI/CD, monitoring, alerting</text>
+    <text class="sbB" x="58" y="154">live Spark and Kafka clusters</text>
+
+    <rect x="450" y="50" width="390" height="180" rx="12" fill="#E8F4F3" stroke="#0E6F6B" stroke-width="1.5"/>
+    <text class="sbH" x="468" y="84" fill="#0A4A46">What b1 to b10 built</text>
+    <text class="sbB" x="468" y="114">extract from a live source</text>
+    <text class="sbB" x="468" y="134">transform defensively, idempotently</text>
+    <text class="sbB" x="468" y="154">partition and serve to the warehouse</text>
+
+    <text class="sbN" x="40" y="276">The pipeline logic transfers to every tool and scale; orchestration and monitoring live in learn-dataops.</text>
+  </svg>
+  <figcaption>🔍 Click to zoom - the pipeline logic transfers, orchestration lives elsewhere</figcaption>
+</figure>
+
         <ul>
           <li><strong><a href="https://phoebefu6.github.io/learn-data-warehouse-with-phoebe/">learn-data-warehouse</a>:</strong> models the served table you just built into star schemas, SCDs, and marts. It picks up exactly where b10 stops.</li>
           <li><strong><a href="https://phoebefu6.github.io/learn-dataops-with-phoebe/">learn-dataops</a>:</strong> schedules, monitors, tests, and deploys the pipeline you built. It operates what you engineered.</li>
